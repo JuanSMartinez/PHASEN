@@ -26,8 +26,11 @@ else
 	echo "Created empty training directory."
 fi
 
-TRAIN_CSV=id_files/avspeech_train.csv
-while IFS=, read -r id start end x y
-do
-	echo $id
-done < $TRAIN_CSV
+# Download the csv files with all the video ids
+
+
+#TRAIN_CSV=id_files/avspeech_train.csv
+#while IFS=, read -r id start end x y
+#do
+#	echo $id
+#done < $TRAIN_CSV
