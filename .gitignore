@@ -3,3 +3,4 @@ datasets/AVSpeech/avspeech_test.csv
 datasets/AVSpeech/train/
 datasets/AVSpeech/test/
 datasets/AVSpeech/*.txt
+**/.DS_Store
