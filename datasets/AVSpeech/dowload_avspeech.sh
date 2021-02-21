@@ -1,66 +1,86 @@
 #!/bin/bash
 
-Download_Training_Set(){
+Download_Data_Set(){
 	# The CSV files with video ids must have been downloaded in advance
-	# Downloading the files via wget or curl proved to be extremely difficult (requires Google authentication) and not worth the effort
-
-	TRAIN_CSV="avspeech_train.csv"
-	TEST_CSV="avspeech_test.csv"
+	# Downloading the files via wget or curl proved to be difficult (requires Google authentication) and not worth the effort
+	
+	SET=$1
+	echo "DOWNLOADING AND PROCESSING ALL DATA FOR DIRECTORY '$SET':"
+	if [ "$SET" == "train" ]
+	then
+		CSV_FILE="avspeech_train.csv"
+		DEST_DIR="train/"
+		LOG="log_train.txt"
+	else
+		CSV_FILE="avspeech_test.csv"
+		DEST_DIR="test/"
+		LOG="log_test.txt"
+	fi
+	
 	PREFIX="http://youtube.com/watch?v="
 
-	SUCCESS_TRAIN=0
-	FAIL_TRAIN=0
-	TOTAL_TRAIN=0
-	if [ -f "$TRAIN_CSV" ]
+	SUCCESS=0
+	FAIL=0
+	TOTAL=0
+	if [ -f "$CSV_FILE" ]
 	then
 		while IFS=, read -r ID START END x y
 		do
-			((TOTAL_TRAIN = TOTAL_TRAIN + 1))
+			((TOTAL = TOTAL + 1))
 			# Try to download and get the speech of a video	
-			OUTPUT="train/_$ID.%(ext)s"
+			OUTPUT="$DEST_DIR/_$ID.%(ext)s"
 			URL="$PREFIX$ID"
 			if youtube-dl -x --audio-format "wav" --audio-quality 0 -o "$OUTPUT" "$URL"
 			then
-				ffmpeg -nostdin -hide_banner -loglevel error -i "train/_$ID.wav" -ss "$START" -to "$END" -c copy "train/$ID.wav"
-				rm "train/_$ID.wav"
-				((SUCCESS_TRAIN = SUCCESS_TRAIN + 1))
+				ffmpeg -nostdin -hide_banner -loglevel error -i "$DEST_DIR/_$ID.wav" -ss "$START" -to "$END" -c copy "$DEST_DIR/$ID.wav"
+				rm "$DEST_DIR/_$ID.wav"
+				((SUCCESS = SUCCESS + 1))
 			else
-				((FAIL_TRAIN = FAIL_TRAIN + 1))
+				((FAIL = FAIL + 1))
 			fi
-		done < "$TRAIN_CSV"
-		echo "Total Files: $TOTAL_TRAIN. Succesfully downloaded and processed: $SUCCESS_TRAIN. Failed to download: $FAIL_TRAIN" > log_train.txt
+		done < "$CSV_FILE"
+		echo "Total Files: $TOTAL. Succesfully downloaded and processed: $SUCCESS. Failed to download: $FAIL" > "$LOG"
 	else
-		echo "ERROR: Metadata for training files not found. Download the file 'avspeech_train.csv', place it along this script and run again."
-		exit -1
+		echo "ERROR: Metadata for data files not found. Download the files 'avspeech_train.csv' and 'avspeech_test.csv' and place them along this script. Then run again."
+		exit -2
 	fi
+	echo "PROCESSED FINISHED. CHECK LOG FOR DETAILS."
 }
 
+echo "Which dataset would you like to download? (train/test)?"
+read DATASET
+if [ ! "$DATASET" == "train" ] && [ ! "$DATASET" == "test" ]
+then
+	echo "ERROR: Invalid Choice"
+	exit -1
+fi
 
-if [ -d train ]
+if [ -d "$DATASET" ]
 then 
-	echo "Training directory already exists. Would you like to erase it or keep its contents? (erase/keep):"
-	read train_choice
-	while [ ! -z "$train_choice" ]
+	echo "Dataset directory already exists. Would you like to erase it or keep its contents? (erase/keep):"
+	read CHOICE
+	while [ ! -z "$CHOICE" ]
 	do
-	if [ "$train_choice" == "erase" ]
+	if [ "$CHOICE" == "erase" ]
 	then 
-		rm -rf train
-		mkdir train
-		echo "Erased all previous training files and created a new empty training directory."
-		Download_Training_Set
+		rm -rf "$DATASET"
+		mkdir "$DATASET"
+		echo "Erased all previous files and created a new empty directory."
+		Download_Data_Set "$DATASET"
 		break
-	elif [ "$train_choice" == "keep" ]
+	elif [ "$CHOICE" == "keep" ]
 	then
-		echo "Keeping files inside the train directory."
+		echo "Keeping files inside the directory."
 		break
 	else
 		echo "Invalid choice. Please choose to erase or keep:"
-		read train_choice
+		read CHOICE 
 	fi
 	done
 else
-	mkdir train
-	echo "Created empty training directory."
+	mkdir "$DATASET"
+	echo "Created empty directory."
+	Download_Data_Set "$DATASET"
 fi
 
 
