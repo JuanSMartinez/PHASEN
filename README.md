@@ -9,6 +9,7 @@ Unofficial implementation of the PHASEN network by [Yin et al., (2020)](https://
 * Pytorch
 * ffmpeg
 * youtube-dl
+* `gshuf` from `corutils` if using Mac OS 
 
 # Databases
 
