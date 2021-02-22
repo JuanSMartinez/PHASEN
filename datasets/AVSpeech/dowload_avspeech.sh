@@ -5,7 +5,6 @@ Download_Data_Set(){
 	# Downloading the files via wget or curl proved to be difficult (requires Google authentication) and not worth the effort
 	
 	SET=$1
-	echo "DOWNLOADING AND PROCESSING ALL DATA FOR DIRECTORY '$SET':"
 	if [ "$SET" == "train" ]
 	then
 		CSV_FILE="avspeech_train.csv"
@@ -16,14 +15,31 @@ Download_Data_Set(){
 		DEST_DIR="test/"
 		LOG="log_test.txt"
 	fi
-	
 	PREFIX="http://youtube.com/watch?v="
-
+	
 	SUCCESS=0
 	FAIL=0
 	TOTAL=0
 	if [ -f "$CSV_FILE" ]
 	then
+		echo "Processing metadata of video id's for the $SET dataset. This might take a while ..."
+		VIDS=( $( cut -d ',' -f1 $CSV_FILE ) )
+		START_STAMPS=( $( cut -d ',' -f2 $CSV_FILE ) )
+		END_STAMPS=( $( cut -d ',' -f3 $CSV_FILE ) )
+		TOTAL_VIDS=( ${#VIDS[@]} )
+		if [ uname == "Darwin" ]
+		then
+			# Using Mac OS
+			IDX=( $( seq 0 1 $((TOTAL_VIDS - 1)) | gshuf ) )
+		else
+			IDX=( $( seq 0 1 $((TOTAL_VIDS - 1)) | shuf ) )
+		fi
+		
+		for i in "${IDX[@]}"
+		do
+			#TODO
+		done
+
 		while IFS=, read -r ID START END x y
 		do
 			((TOTAL = TOTAL + 1))
