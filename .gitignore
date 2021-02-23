@@ -1,7 +1,8 @@
 datasets/AVSpeech/*.csv
 datasets/AVSpeech/train/
 datasets/AVSpeech/test/
-datasets/AudioSet/train
-datasets/AudioSet/test
+datasets/AudioSet/train/
+datasets/AudioSet/test/
 datasets/AudioSet/*.csv
 **/.DS_Store
+__pycache__/

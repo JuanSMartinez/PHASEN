@@ -5,6 +5,7 @@ Date: Spring 2021
 '''
 from scipy.io.wavfile import read as wavread
 from scipy.signal import resample
+import numpy as np
 import sys
 
 # Global variables according to the original paper by Yin et al. (2020)
@@ -33,6 +34,18 @@ def read_audio_from(path):
         n_bits = -1
 
     if n_bits > 0:
-        data = float(data/(2.0**(n_bits-1)+1))
+        
+        try:
+            # If stereo, we unpack two values
+            samples, channels = data.shape
+            data = data.astype(float)
+            data[:,0] = data[:,0]/(2.0**(n_bits-1)+1)
+            data[:,1] = data[:,1]/(2.0**(n_bits-1)+1)
+            data = data.sum(axis=1)/2.0
+        except ValueError:
+            # We have a mono file 
+            data = data.astype(float).flatten()/(2.0**(n_bits-1)+1)
 
     return fs, data
+
+
