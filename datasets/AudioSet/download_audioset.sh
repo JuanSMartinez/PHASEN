@@ -1,20 +1,27 @@
 #!/bin/bash
 
 Download_Data_Set(){
-	# The CSV files with video ids must have been downloaded in advance
-	# Downloading the files via wget or curl proved to be difficult (requires Google authentication) and not worth the effort
+
+	# For this dataset, we can download the CSV files from the script
 	
 	SET=$1
+	echo "Downloading metadata file ..."
 	if [ "$SET" == "train" ]
 	then
-		CSV_FILE="avspeech_train.csv"
-		LOG="log_train.txt"
+		# The paper declares to have used the 'Balanced train' set. But this set only has ~22k videos. We use the 'Unbalanced train' set here.
+		curl -LO http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/unbalanced_train_segments.csv	
+		cat unbalanced_train_segments.csv | sed 1,3d > metadata.csv
+		rm unbalanced_train_segments.csv
 		SIZE=10
 	else
-		CSV_FILE="avspeech_test.csv"
-		LOG="log_test.txt"
+		# For testing, we use the 'Eval_segments' set
+		curl -LO http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/eval_segments.csv
+		cat eval_segments.csv | sed 1,3d > metadata.csv
+		rm eval_segments.csv
 		SIZE=2
 	fi
+
+	CSV_FILE="metadata.csv"
 	PREFIX="http://youtube.com/watch?v="
 	
 	SUCCESS=0
@@ -53,9 +60,10 @@ Download_Data_Set(){
 				break
 			fi
 		done
-		echo "Complete! $SUCCESS files were downloaded and preprocessed in the '$SET' directory."	
+		echo "Complete! $SUCCESS files were downloaded and preprocessed in the '$SET' directory."
+		rm "$CSV_FILE"	
 	else
-		echo "ERROR: Metadata for data files not found. Download the files 'avspeech_train.csv' and 'avspeech_test.csv' and place them along this script. Then run again."
+		echo "ERROR: Metadata for data files not found. Try to run this script again or download CSV files manually." 
 		exit -2
 	fi
 }
