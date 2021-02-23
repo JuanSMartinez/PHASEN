@@ -5,15 +5,17 @@ Unofficial implementation of the PHASEN network by [Yin et al., (2020)](https://
 
 # Requirements
 
-* Python 
+* Python 3+ 
 * Pytorch
-* ffmpeg
-* youtube-dl
-* `gshuf` from `corutils` if using Mac OS 
+* Scipy
+* Numpy
+* `ffmpeg`
+* `youtube-dl`
+* `gshuf` from `coreutils` if using Mac OS 
 
-# Databases
+# Datasets
 
-From the original work of [Yin et al., (2020)](https://ojs.aaai.org/index.php/AAAI/article/view/6489), the [AVSpeech](https://looking-to-listen.github.io/avspeech/index.html) dataset is used along with the [AudioSet](https://research.google.com/audioset/) to create a noisy speech dataset. The contents under the `datasets/AVSpeech` directory correspond to code and files to download and process the AVSpeech dataset from the available information on the web on the Spring of 2021.
+From the original work of [Yin et al., (2020)](https://ojs.aaai.org/index.php/AAAI/article/view/6489), the [AVSpeech](https://looking-to-listen.github.io/avspeech/index.html) dataset is used along with the [AudioSet](https://research.google.com/audioset/) to create a noisy speech dataset. The contents under the `datasets/AVSpeech` directory correspond to the script to download and process the AVSpeech dataset from the available information on the web on the Spring of 2021. Please note that the CSV files that contain the video ID's from the dataset must be downloaded in advance. Place such files along with the script in the `datasets/AVSpeech` folder. The AudioSet dataset can be downloaded directly by running the script inside `datasets/AudioSet`.
 
 # References
 
