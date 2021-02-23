@@ -8,18 +8,16 @@ Download_Data_Set(){
 	if [ "$SET" == "train" ]
 	then
 		CSV_FILE="avspeech_train.csv"
-		DEST_DIR="train/"
 		LOG="log_train.txt"
+		SIZE=10
 	else
 		CSV_FILE="avspeech_test.csv"
-		DEST_DIR="test/"
 		LOG="log_test.txt"
+		SIZE=2
 	fi
 	PREFIX="http://youtube.com/watch?v="
 	
 	SUCCESS=0
-	FAIL=0
-	TOTAL=0
 	if [ -f "$CSV_FILE" ]
 	then
 		echo "Processing metadata of video id's for the $SET dataset. This might take a while ..."
@@ -30,37 +28,36 @@ Download_Data_Set(){
 		if [ uname == "Darwin" ]
 		then
 			# Using Mac OS
-			IDX=( $( seq 0 1 $((TOTAL_VIDS - 1)) | gshuf ) )
+			IDX=( $( seq -f %1.0f 0 1 $((TOTAL_VIDS - 1)) | gshuf ) )
 		else
-			IDX=( $( seq 0 1 $((TOTAL_VIDS - 1)) | shuf ) )
+			# Using Linux
+			IDX=( $( seq -f %1.0f 0 1 $((TOTAL_VIDS - 1)) | shuf ) )
 		fi
-		
+		echo "Beginning download and processing of $SIZE videos, this will take even more time ..."	
 		for i in "${IDX[@]}"
 		do
-			#TODO
-		done
-
-		while IFS=, read -r ID START END x y
-		do
-			((TOTAL = TOTAL + 1))
-			# Try to download and get the speech of a video	
-			OUTPUT="$DEST_DIR/_$ID.%(ext)s"
-			URL="$PREFIX$ID"
-			if youtube-dl -x --audio-format "wav" --audio-quality 0 -o "$OUTPUT" "$URL"
+			if [ $SUCCESS -lt $SIZE ]
 			then
-				ffmpeg -nostdin -hide_banner -loglevel error -i "$DEST_DIR/_$ID.wav" -ss "$START" -to "$END" -c copy "$DEST_DIR/$ID.wav"
-				rm "$DEST_DIR/_$ID.wav"
-				((SUCCESS = SUCCESS + 1))
+				ID="${VIDS[$i]}"
+				START="${START_STAMPS[$i]}"
+				END="${END_STAMPS[$i]}"
+				OUTPUT="$SET/_$ID.%(ext)s"
+				URL="$PREFIX$ID"
+				if youtube-dl -x --audio-format "wav" --audio-quality 0 -o "$OUTPUT" "$URL"
+				then
+					ffmpeg -nostdin -hide_banner -loglevel error -i "$SET/_$ID.wav" -ss "$START" -to "$END" -c copy "$SET/$ID.wav"
+					rm "$SET/_$ID.wav"
+					((SUCCESS = SUCCESS + 1))
+				fi
 			else
-				((FAIL = FAIL + 1))
+				break
 			fi
-		done < "$CSV_FILE"
-		echo "Total Files: $TOTAL. Succesfully downloaded and processed: $SUCCESS. Failed to download: $FAIL" > "$LOG"
+		done
+		echo "Complete! $SUCCESS files were downloaded and preprocessed in the '$SET' directory."	
 	else
 		echo "ERROR: Metadata for data files not found. Download the files 'avspeech_train.csv' and 'avspeech_test.csv' and place them along this script. Then run again."
 		exit -2
 	fi
-	echo "PROCESSED FINISHED. CHECK LOG FOR DETAILS."
 }
 
 echo "Which dataset would you like to download? (train/test)?"
