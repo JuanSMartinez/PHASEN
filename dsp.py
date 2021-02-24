@@ -9,7 +9,7 @@ import numpy as np
 import sys
 
 # Global variables according to the original paper by Yin et al. (2020)
-audio_fs = 16e3
+audio_fs = int(16e3)
 hann_win_length = 0.025 # 25 ms
 hop_length = 0.01 # 10 ms
 fft_size = 512
