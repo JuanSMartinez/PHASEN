@@ -4,8 +4,9 @@ Author: Juan S. Martinez
 Date: Spring 2021
 '''
 from scipy.io.wavfile import read as wavread
-from scipy.signal import resample
+from scipy.signal import resample_poly, stft
 import numpy as np
+import math
 import sys
 
 # Global variables according to the original paper by Yin et al. (2020)
@@ -17,8 +18,8 @@ fft_size = 512
 def read_audio_from(path):
     '''
     Read the audio file from a path
-    :param path. The path to the audio file
-    :return fs, data. The sampling rate and the data as a floating-point number array
+    :param: path. The path to the audio file
+    :return: fs, data. The sampling rate and the data as a floating-point number array
     '''
     # Read the data first
     fs, data = wavread(path)
@@ -49,3 +50,31 @@ def read_audio_from(path):
     return fs, data
 
 
+def resample_signal(data, old_fs, target_fs):
+    '''
+    Resample a signal in the data arry to a target sampling frequency
+    :param : data: np.array. The signal to be resampled
+    :param : old_fs: int. The original sampling frequency
+    :param : target_fs: int. The target sampling frequency
+    :return : resampled. np.array. The resampled signal
+    '''
+
+    g = math.gcd(old_fs, target_fs)
+    up = target_fs//g
+    down = old_fs//g
+    # This uses the default FIR low pass filter from scipy, which uses a kaiser window 
+    resampled = resample_poly(data, up, down)
+    return resampled
+
+
+def get_signal_spectogram(data, fs):
+    '''
+    Compute the spectogram of the signal in the data array via the STFT
+    :param : data. np.array. The signal 
+    :param : fs. int. Sample rate of the signal
+    :return : spec. Spectogram of the signal
+    '''
+
+    # According to the paper, the paper is computed using a Hann window with a length of 25 ms,
+    # a hop length of 10 ms and FFt size of 512
+    pass
