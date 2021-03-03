@@ -4,7 +4,7 @@ Author: Juan S. Martinez
 Date: Spring 2021
 '''
 from scipy.io.wavfile import read as wavread
-from scipy.signal import resample_poly, stft
+from scipy.signal import resample_poly, stft, check_NOLA
 import numpy as np
 import math
 import sys
@@ -67,14 +67,33 @@ def resample_signal(data, old_fs, target_fs):
     return resampled
 
 
-def get_signal_spectogram(data, fs):
+def get_stft_spectrogram(data, fs):
     '''
-    Compute the spectogram of the signal in the data array via the STFT
+    Compute the spectrogram of the signal in the data array via the STFT
     :param : data. np.array. The signal 
     :param : fs. int. Sample rate of the signal
     :return : spec. Spectogram of the signal
     '''
 
-    # According to the paper, the paper is computed using a Hann window with a length of 25 ms,
+    # According to the paper, the spectrogram is computed using a Hann window with a length of 25 ms,
     # a hop length of 10 ms and FFt size of 512
-    pass
+    
+    # I believe the length of each segment is the hann window length
+    n_per_seg = int(hann_win_length*fs)
+
+    # The hop size H = n_per_seg - n_overlap according to scipy 
+    n_hop_size = int(hop_length*fs)
+    n_overlap = n_per_seg - n_hop_size
+
+    # Compute STFT if the nonzero overlap add constraint is satisfied
+    if check_NOLA('hann', n_per_seg, n_overlap):
+        f, t, Zxx = stft(data, fs, window='hann', nperseg=n_per_seg, noverlap=n_overlap, nfft=fft_size) 
+        # Return the complex spectrogram
+        return f, t, Zxx
+    else:
+        raise Exception("The nonzero overlap constraint was not met while computing a STFT")
+
+
+
+
+
