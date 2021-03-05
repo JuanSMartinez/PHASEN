@@ -94,6 +94,16 @@ def get_stft_spectrogram(data, fs):
         raise Exception("The nonzero overlap constraint was not met while computing a STFT")
 
 
-
+def clip_audio(fs, audio_data, max_length):
+    '''
+    Clip audio data to a max_length in seconds
+    :param: fs. Sampling frequency of the audio data
+    :param: audio_data. Mono audio data as a floating point array
+    :max_length: maximum length to clip to. A value in seconds
+    '''
+    
+    end_sample = int(max_length*fs)
+    # A 'hard-clip' approach of truncating the signal
+    return audio_data[0:end_sample]
 
 
