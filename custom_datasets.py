@@ -47,6 +47,14 @@ class AVSpeechAudioSet(Dataset):
         # Compute spectrograms
         f_mix, t_mix, mix_spec = dsp.get_stft_spectrogram(mix, dsp.audio_fs)
         f_truth, t_truth, ground_truth_spec = dsp.get_stft_spectrogram(re_speech, dsp.audio_fs)
-        return torch.tensor(f_mix), torch.tensor(t_mix), torch.tensor(mix_spec), torch.tensor(f_truth), torch.tensor(t_truth), torch.tensor(ground_truth_spec)
+
+        # The spectrograms have to be shaped as (T, F, 2), but the output of dsp is a complex array of shape (F,T)
+        mix_spec_t = torch.tensor(mix_spec).T
+        ground_truth_spec_t = torch.tensor(ground_truth_spec).T
+        
+        mix_t = torch.cat((mix_spec_t.real.unsqueeze(2), mix_spec_t.imag.unsqueeze(2)),dim=2)
+        ground_truth_t = torch.cat((ground_truth_spec_t.real.unsqueeze(2), ground_truth_spec_t.imag.unsqueeze(2)),dim=2)
+
+        return torch.tensor(f_mix), torch.tensor(t_mix), mix_t, torch.tensor(f_truth), torch.tensor(t_truth), ground_truth_t 
 
 
