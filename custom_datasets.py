@@ -47,6 +47,6 @@ class AVSpeechAudioSet(Dataset):
         # Compute spectrograms
         f_mix, t_mix, mix_spec = dsp.get_stft_spectrogram(mix, dsp.audio_fs)
         f_truth, t_truth, ground_truth_spec = dsp.get_stft_spectrogram(re_speech, dsp.audio_fs)
-        return torch.tensor(mix_spec), torch.tensor(ground_truth_spec)
+        return torch.tensor(f_mix), torch.tensor(t_mix), torch.tensor(mix_spec), torch.tensor(f_truth), torch.tensor(t_truth), torch.tensor(ground_truth_spec)
 
 
