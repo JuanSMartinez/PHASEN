@@ -1,3 +1,9 @@
+'''
+Custom dataset classes to handle the datasets in PyTorch
+Author: Juan S. Martinez
+Date: Spring 2021
+'''
+
 import os
 from torch.utils.data import Dataset
 import torch
