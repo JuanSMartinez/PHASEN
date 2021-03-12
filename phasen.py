@@ -121,5 +121,18 @@ class TSB(nn.Module):
         return s_a_out, s_p_out
 
 
-        
+class PHASEN(nn.Module):
+    '''
+    Unofficial implementation of the PHASEN network by Yin et al., (2020)
+    '''
+
+    def __init__(self, Ca=96, Cp=48, Cr_tsb=5, Cr_out=8, T=301, F=258):
+        super(PHASEN, self).__init__()
+
+        # Convolutional layers to produce stream A
+        self.conv_a = nn.Sequential(
+                nn.Conv2d(2, Ca, kernel_size=(1,7), stride=1, dilation=1, padding=(0,3)),
+                nn.Conv2d(Ca, Ca, kernel_size=(7,1), stride=1, dilation=1, padding=(3,0))
+
+        # Convolutional layers to produce stream P
 
