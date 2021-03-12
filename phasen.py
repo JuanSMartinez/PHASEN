@@ -16,7 +16,7 @@ class FTB(nn.Module):
 
         # Sub attention module
         self.conv_att = nn.Sequential(
-                nn.Conv2d(Ca, Cr, kernel_size=(1,1), stride=1, dilation=1, padding=0),
+                nn.Conv2d(Ca, Cr, kernel_size=1, stride=1, dilation=1, padding=0),
                 nn.BatchNorm2d(Cr),
                 nn.ReLU()
                 )
@@ -60,5 +60,44 @@ class FTB(nn.Module):
         x_out = self.conv_out(x_c)
         return x_out
 
+class TSB(nn.Module):
+    '''
+    The TSB module in the original paper by Yin et. al, (2020)
+    '''
 
+    def __init__(self, Ca=96, Cp=48, Cr=5, T=301, F=258):
+        super(TSB, self).__init__()
+
+        # Stream A blocks
+        self.ftb_1 = FTB(Ca, Cr, T, F)
+        self.conv_a_1 = nn.Sequential(
+                nn.Conv2d(Ca, Ca, kernel_size=5, stride=1, dilation=1, padding=2),
+                nn.BatchNorm2d(Ca),
+                nn.ReLU())
+
+        self.conv_a_2 = nn.Sequential(
+                nn.Conv2d(Ca, Ca, kernel_size=(25, 1), stride=1, dilation=1, padding=(12,0)),
+                nn.BatchNorm2d(Ca),
+                nn.ReLU())
+        
+        self.conv_a_3 = nn.Sequential(
+                nn.Conv2d(Ca, Ca, kernel_size=5, stride=1, dilation=1, padding=2),
+                nn.BatchNorm2d(Ca),
+                nn.ReLU())
+
+        self.ftb_2 = FTB(Ca, Cr, T, F)
+
+        # Stream P blocks
+        self.conv_p_1 = nn.Sequential(
+                nn.Conv2d(Cp, Cp, kernel_size=(5, 3), stride=1, dilation=1, padding=(2, 1)),
+                nn.BatchNorm2d(Cp),
+                nn.ReLU())
+
+        self.conv_p_2 = nn.Sequential(
+                nn.Conv2d(Cp, Cp, kernel_size=(25, 1), stride=1, dilation=1, padding=(12, 0)),
+                nn.BatchNorm2d(Cp),
+                nn.ReLU())
+        
+    def forward(self, x):
+        pass
 
