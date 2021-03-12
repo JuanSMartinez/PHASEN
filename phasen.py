@@ -89,15 +89,37 @@ class TSB(nn.Module):
 
         # Stream P blocks
         self.conv_p_1 = nn.Sequential(
-                nn.Conv2d(Cp, Cp, kernel_size=(5, 3), stride=1, dilation=1, padding=(2, 1)),
-                nn.BatchNorm2d(Cp),
-                nn.ReLU())
+                nn.LayerNorm((Cp, T, F)),
+                nn.Conv2d(Cp, Cp, kernel_size=(5, 3), stride=1, dilation=1, padding=(2, 1)))
 
         self.conv_p_2 = nn.Sequential(
-                nn.Conv2d(Cp, Cp, kernel_size=(25, 1), stride=1, dilation=1, padding=(12, 0)),
-                nn.BatchNorm2d(Cp),
-                nn.ReLU())
+                nn.LayerNorm((Cp, T, F)),
+                nn.Conv2d(Cp, Cp, kernel_size=(25, 1), stride=1, dilation=1, padding=(12, 0)))
         
-    def forward(self, x):
-        pass
+        # Convolutional layers for information communication functions
+        self.conv_p_to_a = nn.Conv2d(Cp, Ca, kernel_size=1, stride=1, dilation=1, padding=0)
+        self.conv_a_to_p = nn.Conv2d(Ca, Cp, kernel_size=1, stride=1, dilation=1, padding=0)
+
+    def forward(self, s_a, s_p):
+        # NOTE: The input should be of shape (N, Ca, T, F) for s_a and (N, Cp, T, F) for s_p
+        
+        # Compute amplitude stream
+        x_a = self.ftb_1(s_a)
+        x_a = self.conv_a_1(x_a)
+        x_a = self.conv_a_2(x_a)
+        x_a = self.conv_a_3(x_a)
+        x_a = self.ftb_2(x_a)
+
+        # Compute phase stream
+        x_p = self.conv_p_1(s_p)
+        x_p = self.conv_p_2(x_p)
+
+        # Information communication
+        s_a_out = x_a * torch.tanh(self.conv_p_to_a(x_p))
+        s_p_out = x_p * torch.tanh(self.conv_a_to_p(x_a))
+
+        return s_a_out, s_p_out
+
+
+        
 
