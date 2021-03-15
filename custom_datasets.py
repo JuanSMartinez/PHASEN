@@ -39,20 +39,28 @@ class AVSpeechAudioSet(Dataset):
         fs_speech, speech = dsp.read_audio_from(avspeech_file)
         fs_noise, noise = dsp.read_audio_from(audioset_file)
         
-        # Clip all audio data to 3 seconds
-        clipped_speech = dsp.clip_audio(fs_speech, speech, 3)
-        clipped_noise = dsp.clip_audio(fs_noise, noise, 3)
-
         # Resample both speech and noise to 16 kHz
-        re_speech = dsp.resample_signal(clipped_speech, fs_speech, dsp.audio_fs)
-        re_noise = dsp.resample_signal(clipped_noise, fs_noise, dsp.audio_fs)
+        re_speech = dsp.resample_signal(speech, fs_speech, dsp.audio_fs)
+        re_noise = dsp.resample_signal(noise, fs_noise, dsp.audio_fs)
+         
+        # Clip all audio data to 3 seconds
+        clipped_speech = dsp.clip_audio(dsp.audio_fs, re_speech, 3)
+        clipped_noise = dsp.clip_audio(dsp.audio_fs, re_noise, 3)
         
         # Combine the signals as in the original paper
-        mix = re_speech + 0.3*re_noise
+        
+        # In case one of the signals is shorter, padd with zeros
+        max_len = max(len(clipped_speech), len(clipped_noise))
+        if len(clipped_speech) < max_len:
+            clipped_speech = dsp.padd_signal(clipped_speech, max_len - len(clipped_speech))
+        if len(clipped_noise) < max_len:
+            clipped_noise = dsp.padd_signal(clipped_noise, max_len - len(clipped_noise))
+
+        mix = clipped_speech + 0.3*clipped_noise
         
         # Compute spectrograms
         f_mix, t_mix, mix_spec = dsp.get_stft_spectrogram(mix, dsp.audio_fs)
-        f_truth, t_truth, ground_truth_spec = dsp.get_stft_spectrogram(re_speech, dsp.audio_fs)
+        f_truth, t_truth, ground_truth_spec = dsp.get_stft_spectrogram(clipped_speech, dsp.audio_fs)
 
         # The spectrograms have to be shaped as (2, T, F), but the output of dsp is a complex array of shape (F,T)
         mix_spec_t = torch.tensor(mix_spec).T

@@ -11,7 +11,7 @@ class FTB(nn.Module):
     The FTB module as described in the original paper by Yin et al., (2020)
     '''
     
-    def __init__(self, Ca=96, Cr=5, T=301, F=258):
+    def __init__(self, Ca=96, Cr=5, T=301, F=257):
         super(FTB, self).__init__()
 
         # Sub attention module
@@ -65,7 +65,7 @@ class TSB(nn.Module):
     The TSB module in the original paper by Yin et. al, (2020)
     '''
 
-    def __init__(self, Ca=96, Cp=48, Cr=5, T=301, F=258):
+    def __init__(self, Ca=96, Cp=48, Cr=5, T=301, F=257):
         super(TSB, self).__init__()
 
         # Stream A blocks
@@ -126,7 +126,7 @@ class PHASEN(nn.Module):
     Unofficial implementation of the PHASEN network by Yin et al., (2020)
     '''
 
-    def __init__(self, Ca=96, Cp=48, Cr_tsb=5, Cr_out=8, bi_lstm_n=600, T=301, F=258):
+    def __init__(self, Ca=96, Cp=48, Cr_tsb=5, Cr_out=8, bi_lstm_n=600, T=301, F=257):
         super(PHASEN, self).__init__()
 
         # Convolutional layers to produce stream A

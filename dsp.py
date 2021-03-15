@@ -100,10 +100,20 @@ def clip_audio(fs, audio_data, max_length):
     :param: fs. Sampling frequency of the audio data
     :param: audio_data. Mono audio data as a floating point array
     :max_length: maximum length to clip to. A value in seconds
+    :return: clipped signal
     '''
     
     end_sample = int(max_length*fs)
     # A 'hard-clip' approach of truncating the signal
     return audio_data[0:end_sample]
 
-
+def padd_signal(signal, extra_zeros):
+    '''
+    Pad a signal with a number of extra zeros
+    :param: signal. Numpy array to be padded
+    :param: extra_zeros. Number of additional zeros to add
+    :return: padded signal.
+    '''
+    n_signal = np.zeros(len(signal)+extra_zeros)
+    n_signal[0:len(signal)] = signal
+    return n_signal
