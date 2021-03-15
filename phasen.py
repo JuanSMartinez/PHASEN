@@ -126,13 +126,77 @@ class PHASEN(nn.Module):
     Unofficial implementation of the PHASEN network by Yin et al., (2020)
     '''
 
-    def __init__(self, Ca=96, Cp=48, Cr_tsb=5, Cr_out=8, T=301, F=258):
+    def __init__(self, Ca=96, Cp=48, Cr_tsb=5, Cr_out=8, bi_lstm_n=600, T=301, F=258):
         super(PHASEN, self).__init__()
 
         # Convolutional layers to produce stream A
         self.conv_a = nn.Sequential(
                 nn.Conv2d(2, Ca, kernel_size=(1,7), stride=1, dilation=1, padding=(0,3)),
-                nn.Conv2d(Ca, Ca, kernel_size=(7,1), stride=1, dilation=1, padding=(3,0))
+                nn.Conv2d(Ca, Ca, kernel_size=(7,1), stride=1, dilation=1, padding=(3,0)))
 
         # Convolutional layers to produce stream P
+        self.conv_p = nn.Sequential(
+                nn.Conv2d(2, Cp, kernel_size=(5,3), stride=1, dilation=1, padding=(2, 1)),
+                nn.Conv2d(Cp, Cp, kernel_size=(25,1), stride=1, dilation=1, padding=(12,0)))
+
+        # Three TSB blocks
+        self.tsb_1 = TSB(Ca, Cp, Cr_tsb, T, F)
+        self.tsb_2 = TSB(Ca, Cp, Cr_tsb, T, F)
+        self.tsb_3 = TSB(Ca, Cp, Cr_tsb, T, F)
+
+        # Amplitude mask prediction
+        self.amp_conv = nn.Conv2d(Ca, Cr_out, kernel_size=1, stride=1, dilation=1, padding=0)
+        self.amp_lstm = nn.LSTM(F*Cr_out, bi_lstm_n, num_layers=1, batch_first=True, bidirectional=True)
+        self.amp_fc_stack = nn.Sequential(
+                    nn.Linear(2*bi_lstm_n, bi_lstm_n),
+                    nn.ReLU(),
+                    nn.Linear(bi_lstm_n, bi_lstm_n),
+                    nn.ReLU(),
+                    nn.Linear(bi_lstm_n, F),
+                    nn.Sigmoid())
+
+        # Phase prediction
+        self.phase_conv = nn.Conv2d(Cp, 2, kernel_size=1, stride=1, dilation=1, padding=0)
+
+
+    def forward(self, x):
+        # NOTE: x is the input spectrogram of shape (N, 2, T, F)
+
+        # Prepare inputs to TSB blocks
+        s_a_0 = self.conv_a(x)
+        s_p_0 = self.conv_p(x)
+        
+        # TSB blocks
+        s_a_1, s_p_1 = self.tsb_1(s_a_0, s_p_0)
+        s_a_2, s_p_2 = self.tsb_2(s_a_1, s_p_1)
+        s_a_3, s_p_3 = self.tsb_3(s_a_2, s_p_2)
+
+        # Amplitude mask prediction
+        amp_mask = self.amp_conv(s_a_3)
+        N, Cr_out, T, F = amp_mask.shape
+        amp_mask = amp_mask.permute(0,2,3,1)
+        amp_mask = amp_mask.reshape(N, T, F*Cr_out)
+        amp_mask, (h, c) = self.amp_lstm(amp_mask)
+        M = self.amp_fc_stack(amp_mask)
+
+        # Phase prediction
+        phase = self.phase_conv(s_p_3)
+        Phi = torch.zeros(N, T, F, dtype=torch.cfloat)
+        Phi.real = phase[:,0,:,:]
+        Phi.imag = phase[:,1,:,:]
+        Phi = Phi/torch.abs(Phi)
+
+        # Construct final output
+        s_in = torch.zeros(N, T, F, dtype=torch.cfloat)
+        s_in.real = x[:,0,:,:]
+        s_in.imag = x[:,1,:,:]
+        s_out = torch.abs(s_in)*M*Phi
+        return s_out
+
+
+
+      
+     
+           
+
 
