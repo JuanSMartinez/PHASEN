@@ -7,4 +7,5 @@ datasets/AudioSet/*.csv
 **/.DS_Store
 __pycache__/
 *.pyc
-tests.*
+tests.ipynb
+.ipynb_checkpoints/*
