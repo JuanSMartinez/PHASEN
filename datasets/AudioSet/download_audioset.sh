@@ -12,13 +12,13 @@ Download_Data_Set(){
 		curl -LO http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/unbalanced_train_segments.csv	
 		cat unbalanced_train_segments.csv | sed 1,3d > metadata.csv
 		rm unbalanced_train_segments.csv
-		SIZE=100
+		SIZE=2
 	else
 		# For testing, we use the 'Eval_segments' set
 		curl -LO http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/eval_segments.csv
 		cat eval_segments.csv | sed 1,3d > metadata.csv
 		rm eval_segments.csv
-		SIZE=10
+		SIZE=1
 	fi
 
 	CSV_FILE="metadata.csv"

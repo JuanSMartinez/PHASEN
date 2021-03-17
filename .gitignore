@@ -9,3 +9,4 @@ __pycache__/
 *.pyc
 tests.ipynb
 .ipynb_checkpoints/*
+*.pt

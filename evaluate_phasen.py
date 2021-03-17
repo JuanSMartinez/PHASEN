@@ -27,7 +27,7 @@ parser.add_argument('dataset', type=str, help='Dataset to train or test. Choices
 
 # Training configuration
 training_config = {
-    'epochs': 1,
+    'epochs': 5,
     'learning_rate': 2e-4,
     'batch_size': 8
 }
@@ -110,8 +110,6 @@ def train(device, net_type, save_path, dataset):
     net = create_net_of_type(net_type)
     net = net.to(device)
     dataset = create_dataset_for(dataset, 'train')
-    loss_per_epoch = np.zeros(int(training_config['epochs']))
-    loss_per_pass = np.zeros(len(dataset))
     loader = torch.utils.data.DataLoader(dataset,
                                         batch_size=training_config['batch_size'],
                                         shuffle=True,
@@ -120,8 +118,10 @@ def train(device, net_type, save_path, dataset):
                                 lr=training_config['learning_rate'])
 
     criterion = ComplexMSELoss(device)
-
+    loss_per_epoch = np.zeros((int(training_config['epochs']), 2))
     for epoch in range(training_config['epochs']):
+        dataset_idx = 0
+        loss_per_pass = np.zeros(len(dataset))
         for fm, tm, sm, ft, tt, st in loader:
             # Put the spectrograms of the mixed signal and ground truth on the
             # training device
@@ -132,9 +132,15 @@ def train(device, net_type, save_path, dataset):
             optimizer.zero_grad()
             s_in, s_out, M, Phi = net(sm)
             loss = criterion(s_in, s_out)
+            loss_per_pass[dataset_idx] = loss.item()
             loss.backward()
             optimizer.step()
-            print(loss.item())
+            dataset_idx += 1
+        loss_per_epoch[epoch, 0] = loss_per_pass.mean()
+        loss_per_epoch[epoch, 1] = loss_per_pass.std(ddof=1)
+        print('[epoch {}]: loss: {} +/- {}'.format(epoch+1, loss_per_epoch[epoch,0], loss_per_epoch[epoch, 1]))
+    torch.save(net.state_dict(), save_path)
+    print("Finished training network '{}'. Model saved in '{}''".format(net_type, save_path))
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
@@ -158,9 +164,10 @@ if __name__ == "__main__":
             # Check if there is a model already trained
             model_path = net_type + ".pt"
             if os.path.exists(model_path):
-                load = input("A model for the network '{}' already exists."\
-                        "Would you like to train and save a new one?[y/n]")
+                load = input("A model for the network '{}' already exists. "\
+                        "Would you like to train and save a new one?[y/n] ".format(net_type))
                 if load == 'y':
+                    print("Started training on a new model.")
                     train(device, net_type, model_path, dataset)
                 elif load == 'n':
                     print('A new model was not trained.')
