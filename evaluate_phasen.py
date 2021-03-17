@@ -11,6 +11,8 @@ import os
 import phasen
 import numpy as np
 import custom_datasets
+from torch.autograd import Variable
+import torch.nn.functional as F
 
 # --------------- Global variables --------------------------------------------#
 
@@ -25,7 +27,7 @@ parser.add_argument('dataset', type=str, help='Dataset to train or test. Choices
 
 # Training configuration
 training_config = {
-    'epochs': 1e6,
+    'epochs': 1,
     'learning_rate': 2e-4,
     'batch_size': 8
 }
@@ -36,6 +38,49 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 
 # -----------------------------------------------------------------------------#
+
+class ComplexMSELoss(torch.nn.Module):
+    def __init__(self, device, p=0.3):
+        super(ComplexMSELoss, self).__init__()
+        self.p = p
+        self.device = device
+
+    def pw_compress_spectrogram(self, spec):
+        '''
+        Compute the power-law compressed spectrogram on amplitude of a complex
+        spectrogram
+        '''
+        mag_spec = torch.abs(spec)
+        return mag_spec**self.p * spec
+
+    def forward(self, spec_in, spec_out):
+        N, T, Fd = spec_in.shape
+
+        comp_spec_in = self.pw_compress_spectrogram(spec_in)
+        comp_spec_out = self.pw_compress_spectrogram(spec_out)
+
+        comp_split_spec_in = torch.zeros(N,2,T,Fd)
+        comp_split_spec_out = torch.zeros(N,2,T,Fd)
+        comp_split_spec_in[:,0,:,:] = comp_spec_in.real
+        comp_split_spec_in[:,1,:,:] = comp_spec_in.imag
+        comp_split_spec_out[:,0,:,:] = comp_spec_out.real
+        comp_split_spec_out[:,1,:,:] = comp_spec_out.imag
+
+        comp_split_spec_in = Variable(comp_split_spec_in,
+                                    requires_grad=True).to(self.device)
+        comp_split_spec_out = Variable(comp_split_spec_out,
+                                    requires_grad=True).to(self.device)
+
+        mag_comp_spec_in = Variable(torch.abs(comp_spec_in),
+                                    requires_grad=True).to(self.device)
+        mag_comp_spec_out = Variable(torch.abs(comp_spec_out),
+                                    requires_grad=True).to(self.device)
+
+        return 0.5*F.mse_loss(mag_comp_spec_in, mag_comp_spec_out) +\
+                0.5*F.mse_loss(comp_split_spec_in, comp_split_spec_out)
+
+
+
 
 def find_device():
     '''
@@ -65,7 +110,7 @@ def train(device, net_type, save_path, dataset):
     net = create_net_of_type(net_type)
     net = net.to(device)
     dataset = create_dataset_for(dataset, 'train')
-    loss_per_epoch = np.zeros(training_config['epochs'])
+    loss_per_epoch = np.zeros(int(training_config['epochs']))
     loss_per_pass = np.zeros(len(dataset))
     loader = torch.utils.data.DataLoader(dataset,
                                         batch_size=training_config['batch_size'],
@@ -73,16 +118,23 @@ def train(device, net_type, save_path, dataset):
                                         num_workers=2)
     optimizer = torch.optim.Adam(net.parameters(),
                                 lr=training_config['learning_rate'])
+
+    criterion = ComplexMSELoss(device)
+
     for epoch in range(training_config['epochs']):
         for fm, tm, sm, ft, tt, st in loader:
             # Put the spectrograms of the mixed signal and ground truth on the
             # training device
-            sm = sm.to(device)
-            st = st.to(device)
+            sm = sm.float().to(device)
+            st = st.float().to(device)
 
             # Do an optimization step
             optimizer.zero_grad()
-            s_out = net(sm)
+            s_in, s_out, M, Phi = net(sm)
+            loss = criterion(s_in, s_out)
+            loss.backward()
+            optimizer.step()
+            print(loss.item())
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
@@ -100,7 +152,7 @@ if __name__ == "__main__":
         sys.exit(3)
     else:
         device = find_device()
-        print('Operation "{}"" started on device "{}".'.format(operation, device))
+        print('Operation "{}" started on device "{}".'.format(operation, device))
 
         if operation == 'train':
             # Check if there is a model already trained
@@ -116,3 +168,5 @@ if __name__ == "__main__":
                 else:
                     print('Invalid response. Expected "y" or "n"')
                     sys.exit(4)
+            else:
+                train(device, net_type, model_path, dataset)

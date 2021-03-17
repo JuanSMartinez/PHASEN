@@ -10,7 +10,7 @@ class FTB(nn.Module):
     '''
     The FTB module as described in the original paper by Yin et al., (2020)
     '''
-    
+
     def __init__(self, Ca=96, Cr=5, T=301, F=257):
         super(FTB, self).__init__()
 
@@ -44,7 +44,7 @@ class FTB(nn.Module):
         x_att = x_att.permute(0,1,3,2)
         x_att = x_att.reshape(N, F*Cr, T)
         x_att = self.conv_att_1d(x_att)
-        
+
         # Point-wise multiply
         x_att = x_att.permute(0,2,1) # Shape is now (N, T, F)
         x_att = x_att.unsqueeze(1)
@@ -79,7 +79,7 @@ class TSB(nn.Module):
                 nn.Conv2d(Ca, Ca, kernel_size=(25, 1), stride=1, dilation=1, padding=(12,0)),
                 nn.BatchNorm2d(Ca),
                 nn.ReLU())
-        
+
         self.conv_a_3 = nn.Sequential(
                 nn.Conv2d(Ca, Ca, kernel_size=5, stride=1, dilation=1, padding=2),
                 nn.BatchNorm2d(Ca),
@@ -95,14 +95,14 @@ class TSB(nn.Module):
         self.conv_p_2 = nn.Sequential(
                 nn.LayerNorm((Cp, T, F)),
                 nn.Conv2d(Cp, Cp, kernel_size=(25, 1), stride=1, dilation=1, padding=(12, 0)))
-        
+
         # Convolutional layers for information communication functions
         self.conv_p_to_a = nn.Conv2d(Cp, Ca, kernel_size=1, stride=1, dilation=1, padding=0)
         self.conv_a_to_p = nn.Conv2d(Ca, Cp, kernel_size=1, stride=1, dilation=1, padding=0)
 
     def forward(self, s_a, s_p):
         # NOTE: The input should be of shape (N, Ca, T, F) for s_a and (N, Cp, T, F) for s_p
-        
+
         # Compute amplitude stream
         x_a = self.ftb_1(s_a)
         x_a = self.conv_a_1(x_a)
@@ -165,7 +165,7 @@ class PHASEN(nn.Module):
         # Prepare inputs to TSB blocks
         s_a_0 = self.conv_a(x)
         s_p_0 = self.conv_p(x)
-        
+
         # TSB blocks
         s_a_1, s_p_1 = self.tsb_1(s_a_0, s_p_0)
         s_a_2, s_p_2 = self.tsb_2(s_a_1, s_p_1)
@@ -191,12 +191,6 @@ class PHASEN(nn.Module):
         s_in.real = x[:,0,:,:]
         s_in.imag = x[:,1,:,:]
         s_out = torch.abs(s_in)*M*Phi
-        return s_out
 
-
-
-      
-     
-           
-
-
+        # For convenience during training and testing, return everything
+        return s_in, s_out, M, Phi
