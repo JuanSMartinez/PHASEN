@@ -181,16 +181,23 @@ class PHASEN(nn.Module):
 
         # Phase prediction
         phase = self.phase_conv(s_p_3)
-        Phi = torch.zeros(N, T, F, dtype=torch.cfloat)
-        Phi.real = phase[:,0,:,:]
-        Phi.imag = phase[:,1,:,:]
-        Phi = Phi/torch.abs(Phi)
+        Phi = phase.clone()
+        # Phi = torch.zeros(N, T, F, dtype=torch.cfloat)
+        # Phi.real = phase[:,0,:,:]
+        # Phi.imag = phase[:,1,:,:]
+        # Phi = Phi/torch.abs(Phi)
+        mag_phase = torch.sqrt(phase[:,0,:,:]**2 + phase[:,1,:,:]**2)
+        Phi[:,0,:,:] = torch.div(phase[:,0,:,:], mag_phase)
+        Phi[:,1,:,:] = torch.div(phase[:,1,:,:], mag_phase)
 
         # Construct final output
-        s_in = torch.zeros(N, T, F, dtype=torch.cfloat)
-        s_in.real = x[:,0,:,:]
-        s_in.imag = x[:,1,:,:]
-        s_out = torch.abs(s_in)*M*Phi
+        # s_in = torch.zeros(N, T, F, dtype=torch.cfloat)
+        # s_in.real = x[:,0,:,:]
+        # s_in.imag = x[:,1,:,:]
+        # s_out = torch.abs(s_in)*M*Phi
+        mag_in = torch.sqrt(x[:,0,:,:]**2 + x[:,1,:,:]**2)
+        s_out = mag_in.unsqueeze(1).repeat(1,2,1,1) * M.unsqueeze(1).repeat(1,2,1,1) * Phi
 
         # For convenience during training and testing, return everything
-        return s_in, s_out, M, Phi
+        #return s_in, s_out, M, Phi
+        return s_out, M, Phi

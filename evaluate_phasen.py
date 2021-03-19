@@ -13,6 +13,7 @@ import numpy as np
 import custom_datasets
 from torch.autograd import Variable
 import torch.nn.functional as F
+torch.autograd.set_detect_anomaly(True)
 #torch.backends.cudnn.enabled=False
 # --------------- Global variables --------------------------------------------#
 
@@ -50,34 +51,44 @@ class ComplexMSELoss(torch.nn.Module):
         Compute the power-law compressed spectrogram on amplitude of a complex
         spectrogram
         '''
-        mag_spec = torch.abs(spec)
-        return mag_spec**self.p * spec
+        # mag_spec = torch.abs(spec)
+        # return mag_spec**self.p * spec
+        mag_spec = torch.sqrt(spec[:,0,:,:]**2 + spec[:,1,:,:]**2)
+        mag_spec = torch.pow(mag_spec.unsqueeze(1).repeat(1,2,1,1), self.p)
+        return mag_spec * spec
 
     def forward(self, spec_in, spec_out):
-        N, T, Fd = spec_in.shape
+        # N, T, Fd = spec_in.shape
+        #
+        # comp_spec_in = self.pw_compress_spectrogram(spec_in)
+        # comp_spec_out = self.pw_compress_spectrogram(spec_out)
+        #
+        # comp_split_spec_in = torch.zeros(N,2,T,Fd)
+        # comp_split_spec_out = torch.zeros(N,2,T,Fd)
+        # comp_split_spec_in[:,0,:,:] = comp_spec_in.real
+        # comp_split_spec_in[:,1,:,:] = comp_spec_in.imag
+        # comp_split_spec_out[:,0,:,:] = comp_spec_out.real
+        # comp_split_spec_out[:,1,:,:] = comp_spec_out.imag
+        #
+        # comp_split_spec_in = Variable(comp_split_spec_in,
+        #                             requires_grad=True).to(self.device)
+        # comp_split_spec_out = Variable(comp_split_spec_out,
+        #                             requires_grad=True).to(self.device)
+        #
+        # mag_comp_spec_in = Variable(torch.abs(comp_spec_in),
+        #                             requires_grad=True).to(self.device)
+        # mag_comp_spec_out = Variable(torch.abs(comp_spec_out),
+        #                             requires_grad=True).to(self.device)
+        #
+        # return 0.5*F.mse_loss(mag_comp_spec_in, mag_comp_spec_out) +\
+        #         0.5*F.mse_loss(comp_split_spec_in, comp_split_spec_out)
 
         comp_spec_in = self.pw_compress_spectrogram(spec_in)
         comp_spec_out = self.pw_compress_spectrogram(spec_out)
-
-        comp_split_spec_in = torch.zeros(N,2,T,Fd)
-        comp_split_spec_out = torch.zeros(N,2,T,Fd)
-        comp_split_spec_in[:,0,:,:] = comp_spec_in.real
-        comp_split_spec_in[:,1,:,:] = comp_spec_in.imag
-        comp_split_spec_out[:,0,:,:] = comp_spec_out.real
-        comp_split_spec_out[:,1,:,:] = comp_spec_out.imag
-
-        comp_split_spec_in = Variable(comp_split_spec_in,
-                                    requires_grad=True).to(self.device)
-        comp_split_spec_out = Variable(comp_split_spec_out,
-                                    requires_grad=True).to(self.device)
-
-        mag_comp_spec_in = Variable(torch.abs(comp_spec_in),
-                                    requires_grad=True).to(self.device)
-        mag_comp_spec_out = Variable(torch.abs(comp_spec_out),
-                                    requires_grad=True).to(self.device)
-
-        return 0.5*F.mse_loss(mag_comp_spec_in, mag_comp_spec_out) +\
-                0.5*F.mse_loss(comp_split_spec_in, comp_split_spec_out)
+        mag_spec_in = torch.sqrt(comp_spec_in[:,0,:,:]**2 + comp_spec_in[:,1,:,:]**2)
+        mag_spec_out = torch.sqrt(comp_spec_out[:,0,:,:]**2 + comp_spec_out[:,1,:,:]**2)
+        return 0.5*F.mse_loss(mag_spec_in, mag_spec_out) +\
+                 0.5*F.mse_loss(comp_spec_in, comp_spec_out)
 
 
 
@@ -107,42 +118,42 @@ def create_dataset_for(dataset_name, operation):
     return dataset
 
 def train(device, net_type, save_path, dataset):
-	net = create_net_of_type(net_type)
-	net = net.to(device)
-	dataset = create_dataset_for(dataset, 'train')
-	loader = torch.utils.data.DataLoader(dataset,
+    net = create_net_of_type(net_type)
+    net = net.to(device)
+    dataset = create_dataset_for(dataset, 'train')
+    loader = torch.utils.data.DataLoader(dataset,
                                         batch_size=training_config['batch_size'],
                                         shuffle=True,
                                         num_workers=2)
-	optimizer = torch.optim.Adam(net.parameters(),
+    optimizer = torch.optim.Adam(net.parameters(),
                                 lr=training_config['learning_rate'])
-
-	criterion = ComplexMSELoss(device)
-	loss_per_epoch = np.zeros((int(training_config['epochs']), 2))
-	for epoch in range(training_config['epochs']):
-		dataset_idx = 0
-		loss_per_pass = np.zeros(len(dataset))
-		for fm, tm, sm, ft, tt, st in loader:
+    criterion = ComplexMSELoss(device)
+    loss_per_epoch = np.zeros((int(training_config['epochs']), 2))
+    for epoch in range(training_config['epochs']):
+        dataset_idx = 0
+        loss_per_pass = np.zeros(len(dataset))
+        for fm, tm, sm, ft, tt, st in loader:
             # Put the spectrograms of the mixed signal and ground truth on the
             # training device
-			sm = sm.float().to(device)
-			st = st.float().to(device)
+            sm = sm.float().to(device)
+            st = st.float().to(device)
 
             # Do an optimization step
-			optimizer.zero_grad()
-			s_in, s_out, M, Phi = net(sm)
-			s_in = s_in.to(device)
-			s_out = s_out.to(device)
-			loss = criterion(s_in, s_out)
-			loss_per_pass[dataset_idx] = loss.item()
-			loss.backward()
-			optimizer.step()
-			dataset_idx += 1
-		loss_per_epoch[epoch, 0] = loss_per_pass.mean()
-		loss_per_epoch[epoch, 1] = loss_per_pass.std(ddof=1)
-		print('[epoch {}]: loss: {} +/- {}'.format(epoch+1, loss_per_epoch[epoch,0], loss_per_epoch[epoch, 1]))
-	torch.save(net.state_dict(), save_path)
-	print("Finished training network '{}'. Model saved in '{}''".format(net_type, save_path))
+            optimizer.zero_grad()
+			# s_in, s_out, M, Phi = net(sm)
+			# s_in = s_in.to(device)
+			# s_out = s_out.to(device)
+            s_out, M, Phi = net(sm)
+            loss = criterion(sm, s_out)
+            loss_per_pass[dataset_idx] = loss.item()
+            loss.backward()
+            optimizer.step()
+            dataset_idx += 1
+        loss_per_epoch[epoch, 0] = loss_per_pass.mean()
+        loss_per_epoch[epoch, 1] = loss_per_pass.std(ddof=1)
+        print('[epoch {}]: loss: {} +/- {}'.format(epoch+1, loss_per_epoch[epoch,0], loss_per_epoch[epoch, 1]))
+    torch.save(net.state_dict(), save_path)
+    print("Finished training network '{}'. Model saved in '{}''".format(net_type, save_path))
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
