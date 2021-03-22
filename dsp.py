@@ -4,7 +4,7 @@ Author: Juan S. Martinez
 Date: Spring 2021
 '''
 from scipy.io.wavfile import read as wavread
-from scipy.signal import resample_poly, stft, check_NOLA
+from scipy.signal import resample_poly, stft, check_NOLA, istft
 import numpy as np
 import math
 import sys
@@ -31,11 +31,11 @@ def read_audio_from(path):
         n_bits = 32
     elif data.dtype == 'uint8':
         sys.exit("ERROR: Unexpected type of audio data")
-    else: 
+    else:
         n_bits = -1
 
     if n_bits > 0:
-        
+
         try:
             # If stereo, we unpack two values
             samples, channels = data.shape
@@ -44,7 +44,7 @@ def read_audio_from(path):
             data[:,1] = data[:,1]/(2.0**(n_bits-1)+1)
             data = data.sum(axis=1)/2.0
         except ValueError:
-            # We have a mono file 
+            # We have a mono file
             data = data.astype(float).flatten()/(2.0**(n_bits-1)+1)
 
     return fs, data
@@ -62,7 +62,7 @@ def resample_signal(data, old_fs, target_fs):
     g = math.gcd(old_fs, target_fs)
     up = target_fs//g
     down = old_fs//g
-    # This uses the default FIR low pass filter from scipy, which uses a kaiser window 
+    # This uses the default FIR low pass filter from scipy, which uses a kaiser window
     resampled = resample_poly(data, up, down)
     return resampled
 
@@ -70,28 +70,54 @@ def resample_signal(data, old_fs, target_fs):
 def get_stft_spectrogram(data, fs):
     '''
     Compute the spectrogram of the signal in the data array via the STFT
-    :param : data. np.array. The signal 
+    :param : data. np.array. The signal
     :param : fs. int. Sample rate of the signal
     :return : spec. Spectogram of the signal
     '''
 
     # According to the paper, the spectrogram is computed using a Hann window with a length of 25 ms,
     # a hop length of 10 ms and FFt size of 512
-    
+
     # I believe the length of each segment is the hann window length
     n_per_seg = int(hann_win_length*fs)
 
-    # The hop size H = n_per_seg - n_overlap according to scipy 
+    # The hop size H = n_per_seg - n_overlap according to scipy
     n_hop_size = int(hop_length*fs)
     n_overlap = n_per_seg - n_hop_size
 
     # Compute STFT if the nonzero overlap add constraint is satisfied
     if check_NOLA('hann', n_per_seg, n_overlap):
-        f, t, Zxx = stft(data, fs, window='hann', nperseg=n_per_seg, noverlap=n_overlap, nfft=fft_size) 
+        f, t, Zxx = stft(data, fs, window='hann', nperseg=n_per_seg, noverlap=n_overlap, nfft=fft_size)
         # Return the complex spectrogram
         return f, t, Zxx
     else:
         raise Exception("The nonzero overlap constraint was not met while computing a STFT")
+
+
+def recover_from_stft_spectrogram(Zxx, fs):
+    '''
+    Recover the time-domain signal from a spectrogram via the inverse STFT
+    :param : Zxx. np.array. The complex spectrogram
+    :param : fs. int. Sample rate of the signal
+    :return : data. time-domain signal
+    '''
+
+    # According to the paper, the spectrogram is computed using a Hann window with a length of 25 ms,
+    # a hop length of 10 ms and FFt size of 512
+
+    # I believe the length of each segment is the hann window length
+    n_per_seg = int(hann_win_length*fs)
+
+    # The hop size H = n_per_seg - n_overlap according to scipy
+    n_hop_size = int(hop_length*fs)
+    n_overlap = n_per_seg - n_hop_size
+
+    # Compute inverse STFT if the nonzero overlap add constraint is satisfied
+    if check_NOLA('hann', n_per_seg, n_overlap):
+        t, data = istft(Zxx, fs,  window='hann', nperseg=n_per_seg, noverlap=n_overlap, nfft=fft_size)
+        return t, data
+    else:
+        raise Exception("The nonzero overlap constraint was not met while computing an inverse STFT")
 
 
 def clip_audio(fs, audio_data, max_length):
@@ -102,7 +128,7 @@ def clip_audio(fs, audio_data, max_length):
     :max_length: maximum length to clip to. A value in seconds
     :return: clipped signal
     '''
-    
+
     end_sample = int(max_length*fs)
     # A 'hard-clip' approach of truncating the signal
     return audio_data[0:end_sample]
