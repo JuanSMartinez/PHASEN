@@ -117,6 +117,23 @@ def create_dataset_for(dataset_name, operation):
         dataset = None
     return dataset
 
+
+def test(device, net_type, model_path, dataset):
+    net = create_net_of_type(net_type)
+    net.load_state_dict(torch.load(model_path))
+    net.eval()
+    net = net.to(device)
+    dataset = create_dataset_for(dataset, 'test')
+    loader = torch.utils.data.DataLoader(dataset,
+                                        batch_size=1,
+                                        shuffle=True,
+                                        num_workers=2)
+
+    for fm, tm, sm, clean_speech in loader:
+        # TODO: Compute performance scores 
+        pass
+
+
 def train(device, net_type, save_path, dataset):
     net = create_net_of_type(net_type)
     net = net.to(device)
