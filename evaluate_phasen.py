@@ -30,7 +30,7 @@ parser.add_argument('dataset', type=str, help='Dataset to train or test. Choices
 training_config = {
     'epochs': 5,
     'learning_rate': 2e-4,
-    'batch_size': 1
+    'batch_size': 8
 }
 
 # Random seed
@@ -153,7 +153,8 @@ def train(device, net_type, save_path, dataset):
         loss_per_epoch[epoch, 1] = loss_per_pass.std(ddof=1)
         print('[epoch {}]: loss: {} +/- {}'.format(epoch+1, loss_per_epoch[epoch,0], loss_per_epoch[epoch, 1]))
     torch.save(net.state_dict(), save_path)
-    print("Finished training network '{}'. Model saved in '{}''".format(net_type, save_path))
+    np.save('training_loss.npy', loss_per_epoch)
+    print("Finished training network '{}'. Model saved in '{}' and loss saved in 'training_loss.npy'".format(net_type, save_path))
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
