@@ -73,4 +73,4 @@ class AVSpeechAudioSet(Dataset):
         if self.set_type == 'train':
             return torch.tensor(f_mix), torch.tensor(t_mix), mix_t, torch.tensor(f_truth), torch.tensor(t_truth), ground_truth_t
         elif self.set_type == 'test':
-            return torch.tensor(f_mix), torch.tensor(t_mix), mix_t, clipped_speech
+            return torch.tensor(f_mix), torch.tensor(t_mix), mix_t, torch.tensor(clipped_speech), torch.tensor(mix)

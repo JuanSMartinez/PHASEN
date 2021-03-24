@@ -10,9 +10,15 @@ import torch
 import os
 import phasen
 import numpy as np
+import dsp
 import custom_datasets
 from torch.autograd import Variable
 import torch.nn.functional as F
+from pystoi import stoi
+from pesq import pesq
+from mir_eval.separation import bss_eval_sources
+from scipy.io.wavfile import write as wavwrite
+
 torch.autograd.set_detect_anomaly(True)
 #torch.backends.cudnn.enabled=False
 # --------------- Global variables --------------------------------------------#
@@ -120,18 +126,39 @@ def create_dataset_for(dataset_name, operation):
 
 def test(device, net_type, model_path, dataset):
     net = create_net_of_type(net_type)
-    net.load_state_dict(torch.load(model_path))
+    net.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
     net.eval()
-    net = net.to(device)
     dataset = create_dataset_for(dataset, 'test')
     loader = torch.utils.data.DataLoader(dataset,
                                         batch_size=1,
                                         shuffle=True,
                                         num_workers=2)
 
-    for fm, tm, sm, clean_speech in loader:
-        # TODO: Compute performance scores
-        pass
+    metrics = np.zeros((len(dataset), 3))
+    i=0
+    for fm, tm, sm, clean_speech, noisy_speech in loader:
+        s_out, M, Phi = net(sm.float())
+        clean_speech = clean_speech.numpy().flatten()
+        noisy_speech = noisy_speech.numpy().flatten()
+        # Convert s_out from (1, 2, T, F) to a complex array of shape (F, T)
+        s_out = s_out.squeeze(0)
+        C, T, F = s_out.shape
+        sout_c = torch.zeros(T, F, dtype=torch.cfloat)
+        sout_c.real = s_out[0,:,:]
+        sout_c.imag = s_out[1,:,:]
+        sout_c = sout_c.T.detach().numpy()
+
+        # Recover time domain signal
+        t, recovered_speech = dsp.recover_from_stft_spectrogram(sout_c, dsp.audio_fs)
+        PESQ = pesq(dsp.audio_fs, clean_speech, recovered_speech, 'wb')
+        STOI = stoi(clean_speech, recovered_speech, dsp.audio_fs, extended=False)
+        SDR, sir, sar, perm = bss_eval_sources(clean_speech, recovered_speech)
+        metrics[i,0] = SDR[0]
+        metrics[i,1] = PESQ
+        metrics[i,2] = STOI
+        i += 1
+    np.save(net_type + '_metrics.npy', metrics)
+    print("Finished testing of net '{}', metrics saved in {}_metrics.npy".format(net_type, net_type))
 
 
 def train(device, net_type, save_path, dataset):
@@ -189,9 +216,8 @@ if __name__ == "__main__":
         sys.exit(3)
     else:
         device = find_device()
-        print('Operation "{}" started on device "{}".'.format(operation, device))
-
         if operation == 'train':
+            print('Operation "{}" started on device "{}".'.format(operation, device))
             # Check if there is a model already trained
             model_path = net_type + ".pt"
             if os.path.exists(model_path):
@@ -208,3 +234,10 @@ if __name__ == "__main__":
                     sys.exit(4)
             else:
                 train(device, net_type, model_path, dataset)
+        elif operation == 'test':
+            print('Operation "{}" started on device "cpu".'.format(operation))
+            model_path = net_type + ".pt"
+            if os.path.exists(model_path):
+                test(device, net_type, model_path, dataset)
+            else:
+                print('The model "{}" could not be found. Train it first'.format(model_path))
