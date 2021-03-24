@@ -5,13 +5,14 @@ Unofficial implementation of the PHASEN network by [Yin et al., (2020)](https://
 
 # Requirements
 
-* Python 3+ 
+* Python 3+
 * Pytorch
 * Scipy
 * Numpy
 * `ffmpeg`
 * `youtube-dl`
-* `gshuf` from `coreutils` if using Mac OS 
+* `gshuf` from `coreutils` if using Mac OS
+* `python-pesq` (optional for evaluating PESQ metrics). Install from [here](https://github.com/ludlows/python-pesq)
 
 # Datasets
 
@@ -31,8 +32,8 @@ The following is a minimal `bibtex` citation of the work by [Yin et al., (2020)]
 	pages={9458--9465},
 	year={2020},
 	url = {https://ojs.aaai.org/index.php/AAAI/article/view/6489/6345}
-	} 
-	
+	}
+
 	#AVSpeech dataset
 	@article{ephrat2018looking,
 	title={Looking to listen at the cocktail party: A speaker-independent audio-visual model for speech separation},
