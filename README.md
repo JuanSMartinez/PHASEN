@@ -12,7 +12,9 @@ Unofficial implementation of the PHASEN network by [Yin et al., (2020)](https://
 * `ffmpeg`
 * `youtube-dl`
 * `gshuf` from `coreutils` if using Mac OS
-* `python-pesq` (optional for evaluating PESQ metrics). Install from [here](https://github.com/ludlows/python-pesq)
+* `mir_eval` library (optional for computing the SDR metric). Install from [here](https://craffel.github.io/mir_eval/)
+* `python-pesq` (optional for computing the PESQ metric). Install from [here](https://github.com/ludlows/python-pesq)
+* `pystoi` (optional for computing the STOI metric). Install from [here](https://github.com/mpariente/pystoi)
 
 # Datasets
 
