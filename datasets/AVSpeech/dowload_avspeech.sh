@@ -3,18 +3,18 @@
 Download_Data_Set(){
 	# The CSV files with video ids must have been downloaded in advance
 	# Downloading the files via wget or curl proved to be difficult (requires Google authentication) and not worth the effort
-	
+
 	SET=$1
 	if [ "$SET" == "train" ]
 	then
-		CSV_FILE="avspeech_train.csv"	
+		CSV_FILE="avspeech_train.csv"
 		SIZE=2
 	else
 		CSV_FILE="avspeech_test.csv"
 		SIZE=1
 	fi
 	PREFIX="http://youtube.com/watch?v="
-	
+
 	SUCCESS=0
 	if [ -f "$CSV_FILE" ]
 	then
@@ -31,7 +31,7 @@ Download_Data_Set(){
 			# Using Linux
 			IDX=( $( seq -f %1.0f 0 1 $((TOTAL_VIDS - 1)) | shuf ) )
 		fi
-		echo "Beginning download and processing of $SIZE videos, this will take even more time ..."	
+		echo "Beginning download and processing of $SIZE videos, this will take even more time ..."
 		for i in "${IDX[@]}"
 		do
 			if [ $SUCCESS -lt $SIZE ]
@@ -39,19 +39,19 @@ Download_Data_Set(){
 				ID="${VIDS[$i]}"
 				START="${START_STAMPS[$i]}"
 				END="${END_STAMPS[$i]}"
-				OUTPUT="$SET/_$ID.%(ext)s"
+				OUTPUT="$SET/temporal_video_$ID.%(ext)s"
 				URL="$PREFIX$ID"
 				if youtube-dl -x --audio-format "wav" --audio-quality 0 -o "$OUTPUT" "$URL"
 				then
-					ffmpeg -nostdin -hide_banner -loglevel error -i "$SET/_$ID.wav" -ss "$START" -to "$END" -c copy "$SET/$ID.wav"
-					rm "$SET/_$ID.wav"
+					ffmpeg -nostdin -hide_banner -loglevel error -i "$SET/temporal_video_$ID.wav" -ss "$START" -to "$END" -c copy "$SET/$ID.wav"
+					rm "$SET/temporal_video_$ID.wav"
 					((SUCCESS = SUCCESS + 1))
 				fi
 			else
 				break
 			fi
 		done
-		echo "Complete! $SUCCESS files were downloaded and preprocessed in the '$SET' directory."	
+		echo "Complete! $SUCCESS files were downloaded and preprocessed in the '$SET' directory."
 	else
 		echo "ERROR: Metadata for data files not found. Download the files 'avspeech_train.csv' and 'avspeech_test.csv' and place them along this script. Then run again."
 		exit -2
@@ -67,13 +67,13 @@ then
 fi
 
 if [ -d "$DATASET" ]
-then 
+then
 	echo "Dataset directory already exists. Would you like to erase it or keep its contents? (erase/keep):"
 	read CHOICE
 	while [ ! -z "$CHOICE" ]
 	do
 	if [ "$CHOICE" == "erase" ]
-	then 
+	then
 		rm -rf "$DATASET"
 		mkdir "$DATASET"
 		echo "Erased all previous files and created a new empty directory."
@@ -85,7 +85,7 @@ then
 		break
 	else
 		echo "Invalid choice. Please choose to erase or keep:"
-		read CHOICE 
+		read CHOICE
 	fi
 	done
 else
@@ -93,5 +93,3 @@ else
 	echo "Created empty directory."
 	Download_Data_Set "$DATASET"
 fi
-
-

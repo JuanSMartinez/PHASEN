@@ -3,13 +3,13 @@
 Download_Data_Set(){
 
 	# For this dataset, we can download the CSV files from the script
-	
+
 	SET=$1
 	echo "Downloading metadata file ..."
 	if [ "$SET" == "train" ]
 	then
 		# The paper declares to have used the 'Balanced train' set. But this set only has ~22k videos. We use the 'Unbalanced train' set here.
-		curl -LO http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/unbalanced_train_segments.csv	
+		curl -LO http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/unbalanced_train_segments.csv
 		cat unbalanced_train_segments.csv | sed 1,3d > metadata.csv
 		rm unbalanced_train_segments.csv
 		SIZE=2
@@ -23,7 +23,7 @@ Download_Data_Set(){
 
 	CSV_FILE="metadata.csv"
 	PREFIX="http://youtube.com/watch?v="
-	
+
 	SUCCESS=0
 	if [ -f "$CSV_FILE" ]
 	then
@@ -40,7 +40,7 @@ Download_Data_Set(){
 			# Using Linux
 			IDX=( $( seq -f %1.0f 0 1 $((TOTAL_VIDS - 1)) | shuf ) )
 		fi
-		echo "Beginning download and processing of $SIZE videos, this will take even more time ..."	
+		echo "Beginning download and processing of $SIZE videos, this will take even more time ..."
 		for i in "${IDX[@]}"
 		do
 			if [ $SUCCESS -lt $SIZE ]
@@ -48,12 +48,12 @@ Download_Data_Set(){
 				ID="${VIDS[$i]}"
 				START="${START_STAMPS[$i]}"
 				END="${END_STAMPS[$i]}"
-				OUTPUT="$SET/_$ID.%(ext)s"
+				OUTPUT="$SET/temporal_video_$ID.%(ext)s"
 				URL="$PREFIX$ID"
 				if youtube-dl -x --audio-format "wav" --audio-quality 0 -o "$OUTPUT" "$URL"
 				then
-					ffmpeg -nostdin -hide_banner -loglevel error -i "$SET/_$ID.wav" -ss "$START" -to "$END" -c copy "$SET/$ID.wav"
-					rm "$SET/_$ID.wav"
+					ffmpeg -nostdin -hide_banner -loglevel error -i "$SET/temporal_video_$ID.wav" -ss "$START" -to "$END" -c copy "$SET/$ID.wav"
+					rm "$SET/temporal_video_$ID.wav"
 					((SUCCESS = SUCCESS + 1))
 				fi
 			else
@@ -61,9 +61,9 @@ Download_Data_Set(){
 			fi
 		done
 		echo "Complete! $SUCCESS files were downloaded and preprocessed in the '$SET' directory."
-		rm "$CSV_FILE"	
+		rm "$CSV_FILE"
 	else
-		echo "ERROR: Metadata for data files not found. Try to run this script again or download CSV files manually." 
+		echo "ERROR: Metadata for data files not found. Try to run this script again or download CSV files manually."
 		exit -2
 	fi
 }
@@ -77,13 +77,13 @@ then
 fi
 
 if [ -d "$DATASET" ]
-then 
+then
 	echo "Dataset directory already exists. Would you like to erase it or keep its contents? (erase/keep):"
 	read CHOICE
 	while [ ! -z "$CHOICE" ]
 	do
 	if [ "$CHOICE" == "erase" ]
-	then 
+	then
 		rm -rf "$DATASET"
 		mkdir "$DATASET"
 		echo "Erased all previous files and created a new empty directory."
@@ -95,7 +95,7 @@ then
 		break
 	else
 		echo "Invalid choice. Please choose to erase or keep:"
-		read CHOICE 
+		read CHOICE
 	fi
 	done
 else
@@ -103,5 +103,3 @@ else
 	echo "Created empty directory."
 	Download_Data_Set "$DATASET"
 fi
-
-
