@@ -8,10 +8,10 @@ Download_Data_Set(){
 	if [ "$SET" == "train" ]
 	then
 		CSV_FILE="avspeech_train.csv"
-		SIZE=2
+		SIZE=1000
 	else
 		CSV_FILE="avspeech_test.csv"
-		SIZE=1
+		SIZE=1000
 	fi
 	PREFIX="http://youtube.com/watch?v="
 
