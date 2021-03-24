@@ -28,9 +28,9 @@ parser.add_argument('dataset', type=str, help='Dataset to train or test. Choices
 
 # Training configuration
 training_config = {
-    'epochs': 5,
+    'epochs': 50,
     'learning_rate': 2e-4,
-    'batch_size': 8
+    'batch_size': 5
 }
 
 # Random seed
@@ -130,7 +130,7 @@ def test(device, net_type, model_path, dataset):
                                         num_workers=2)
 
     for fm, tm, sm, clean_speech in loader:
-        # TODO: Compute performance scores 
+        # TODO: Compute performance scores
         pass
 
 
