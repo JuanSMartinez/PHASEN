@@ -22,7 +22,7 @@ torch.autograd.set_detect_anomaly(True)
 # --------------- Global variables --------------------------------------------#
 
 # Available networks to perform ablation studies
-networks = ['phasen', 'phasen_baseline', 'phasen_1strm']
+networks = ['phasen', 'phasen_baseline', 'phasen_1strm', 'phasen_no_ftb', 'phasen_no_a2pp2a', 'phasen_no_p2a']
 
 # Argument parser to run the script
 parser = argparse.ArgumentParser(description='Evaluate the PHASEN network')
@@ -32,13 +32,13 @@ parser.add_argument('dataset', type=str, help='Dataset to train or test. Choices
 
 # Training configuration
 training_config = {
-    'epochs': 1,
+    'epochs': 50,
     'learning_rate': 2e-4,
     'batch_size': 5
 }
 
 # Random seed
-seed = 930103
+seed = 210325
 torch.manual_seed(seed)
 np.random.seed(seed)
 
@@ -85,6 +85,14 @@ def create_net_of_type(net_type):
         return phasen.PHASEN()
     elif net_type == 'phasen_1strm':
         return phasen.PHASEN_one_strm()
+    elif net_type == 'phasen_baseline':
+        return phasen.PHASEN_baseline()
+    elif net_type == 'phasen_no_ftb':
+        return phasen.PHASEN_without_ftb()
+    elif net_type == 'phasen_no_a2pp2a':
+        return phasen.PHASEN_without_A2PP2A()
+    elif net_type == 'phasen_no_p2a':
+        return phasen.PHASEN_without_P2A()
     else:
         return None
 
