@@ -120,6 +120,48 @@ class TSB(nn.Module):
 
         return s_a_out, s_p_out
 
+class TSB_one_strm(nn.Module):
+    '''
+    TSB block for one stream without information communication
+    '''
+    def __init__(self, Ca=96, Cp=48, Cr=5, T=301, F=257):
+        super(TSB_one_strm, self).__init__()
+
+        # Stream A blocks
+        self.ftb_1 = FTB(Ca, Cr, T, F)
+        self.conv_a_1 = nn.Sequential(
+                nn.Conv2d(Ca, Ca, kernel_size=5, stride=1, dilation=1, padding=2),
+                nn.BatchNorm2d(Ca),
+                nn.ReLU())
+
+        self.conv_a_2 = nn.Sequential(
+                nn.Conv2d(Ca, Ca, kernel_size=(25, 1), stride=1, dilation=1, padding=(12,0)),
+                nn.BatchNorm2d(Ca),
+                nn.ReLU())
+
+        self.conv_a_3 = nn.Sequential(
+                nn.Conv2d(Ca, Ca, kernel_size=5, stride=1, dilation=1, padding=2),
+                nn.BatchNorm2d(Ca),
+                nn.ReLU())
+
+        self.ftb_2 = FTB(Ca, Cr, T, F)
+
+        # Stream P blocks (removed)
+
+        # Convolutional layers for information communication functions (removed)
+
+    def forward(self, s_a):
+        # NOTE: The input should be of shape (N, Ca, T, F) for s_a
+
+        # Compute amplitude stream
+        x_a = self.ftb_1(s_a)
+        x_a = self.conv_a_1(x_a)
+        x_a = self.conv_a_2(x_a)
+        x_a = self.conv_a_3(x_a)
+        x_a = self.ftb_2(x_a)
+
+        return x_a
+
 
 class PHASEN(nn.Module):
     '''
@@ -182,22 +224,69 @@ class PHASEN(nn.Module):
         # Phase prediction
         phase = self.phase_conv(s_p_3)
         Phi = phase.clone()
-        # Phi = torch.zeros(N, T, F, dtype=torch.cfloat)
-        # Phi.real = phase[:,0,:,:]
-        # Phi.imag = phase[:,1,:,:]
-        # Phi = Phi/torch.abs(Phi)
         mag_phase = torch.sqrt(phase[:,0,:,:]**2 + phase[:,1,:,:]**2)
         Phi[:,0,:,:] = torch.div(phase[:,0,:,:], mag_phase)
         Phi[:,1,:,:] = torch.div(phase[:,1,:,:], mag_phase)
 
         # Construct final output
-        # s_in = torch.zeros(N, T, F, dtype=torch.cfloat)
-        # s_in.real = x[:,0,:,:]
-        # s_in.imag = x[:,1,:,:]
-        # s_out = torch.abs(s_in)*M*Phi
         mag_in = torch.sqrt(x[:,0,:,:]**2 + x[:,1,:,:]**2)
         s_out = mag_in.unsqueeze(1).repeat(1,2,1,1) * M.unsqueeze(1).repeat(1,2,1,1) * Phi
 
         # For convenience during training and testing, return everything
-        #return s_in, s_out, M, Phi
         return s_out, M, Phi
+
+class PHASEN_one_strm(nn.Module):
+    '''
+    One-stream version of PHASEN as in the ablation study
+    '''
+
+    def __init__(self, Ca=96, Cp=48, Cr_tsb=5, Cr_out=8, bi_lstm_n=600, T=301, F=257):
+        super(PHASEN_one_strm, self).__init__()
+
+        # Convolutional layers to produce stream A
+        self.conv_a = nn.Sequential(
+                nn.Conv2d(2, Ca, kernel_size=(1,7), stride=1, dilation=1, padding=(0,3)),
+                nn.Conv2d(Ca, Ca, kernel_size=(7,1), stride=1, dilation=1, padding=(3,0)))
+
+        # Convolutional layers to produce stream P (removed)
+
+        # Three TSB blocks
+        self.tsb_1 = TSB_one_strm(Ca, Cp, Cr_tsb, T, F)
+        self.tsb_2 = TSB_one_strm(Ca, Cp, Cr_tsb, T, F)
+        self.tsb_3 = TSB_one_strm(Ca, Cp, Cr_tsb, T, F)
+
+        # cIRM mask prediction
+        self.amp_conv = nn.Conv2d(Ca, Cr_out, kernel_size=1, stride=1, dilation=1, padding=0)
+        self.amp_lstm = nn.LSTM(F*Cr_out, bi_lstm_n, num_layers=1, batch_first=True, bidirectional=True)
+        self.amp_fc_stack = nn.Sequential(
+                    nn.Linear(2*bi_lstm_n, bi_lstm_n),
+                    nn.ReLU(),
+                    nn.Linear(bi_lstm_n, bi_lstm_n),
+                    nn.ReLU(),
+                    nn.Linear(bi_lstm_n, 2*F),
+                    nn.Sigmoid())
+
+        # Phase prediction (removed)
+
+    def forward(self, x):
+        # NOTE: x is the input spectrogram of shape (N, 2, T, F)
+
+        # Prepare inputs to TSB blocks
+        s_a_0 = self.conv_a(x)
+
+        # TSB blocks
+        s_a_1 = self.tsb_1(s_a_0)
+        s_a_2 = self.tsb_2(s_a_1)
+        s_a_3 = self.tsb_3(s_a_2)
+
+        # cIRM mask prediction
+        cirm_mask = self.amp_conv(s_a_3)
+        N, Cr_out, T, F = cirm_mask.shape
+        cirm_mask = cirm_mask.permute(0,2,3,1)
+        cirm_mask = cirm_mask.reshape(N, T, F*Cr_out)
+        cirm_mask, (h, c) = self.amp_lstm(cirm_mask)
+        cirm_mask = self.amp_fc_stack(cirm_mask)
+        cirm_mask = cirm_mask.reshape(N, T, F, 2)
+        cirm_mask = cirm_mask.permute(0,3,1,2)
+
+        return cirm_mask

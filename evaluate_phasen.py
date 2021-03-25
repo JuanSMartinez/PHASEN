@@ -17,10 +17,8 @@ import torch.nn.functional as F
 from pystoi import stoi
 from pesq import pesq
 from mir_eval.separation import bss_eval_sources
-from scipy.io.wavfile import write as wavwrite
-
 torch.autograd.set_detect_anomaly(True)
-#torch.backends.cudnn.enabled=False
+
 # --------------- Global variables --------------------------------------------#
 
 # Available networks to perform ablation studies
@@ -57,37 +55,11 @@ class ComplexMSELoss(torch.nn.Module):
         Compute the power-law compressed spectrogram on amplitude of a complex
         spectrogram
         '''
-        # mag_spec = torch.abs(spec)
-        # return mag_spec**self.p * spec
         mag_spec = torch.sqrt(spec[:,0,:,:]**2 + spec[:,1,:,:]**2)
         mag_spec = torch.pow(mag_spec.unsqueeze(1).repeat(1,2,1,1), self.p)
         return mag_spec * spec
 
     def forward(self, spec_in, spec_out):
-        # N, T, Fd = spec_in.shape
-        #
-        # comp_spec_in = self.pw_compress_spectrogram(spec_in)
-        # comp_spec_out = self.pw_compress_spectrogram(spec_out)
-        #
-        # comp_split_spec_in = torch.zeros(N,2,T,Fd)
-        # comp_split_spec_out = torch.zeros(N,2,T,Fd)
-        # comp_split_spec_in[:,0,:,:] = comp_spec_in.real
-        # comp_split_spec_in[:,1,:,:] = comp_spec_in.imag
-        # comp_split_spec_out[:,0,:,:] = comp_spec_out.real
-        # comp_split_spec_out[:,1,:,:] = comp_spec_out.imag
-        #
-        # comp_split_spec_in = Variable(comp_split_spec_in,
-        #                             requires_grad=True).to(self.device)
-        # comp_split_spec_out = Variable(comp_split_spec_out,
-        #                             requires_grad=True).to(self.device)
-        #
-        # mag_comp_spec_in = Variable(torch.abs(comp_spec_in),
-        #                             requires_grad=True).to(self.device)
-        # mag_comp_spec_out = Variable(torch.abs(comp_spec_out),
-        #                             requires_grad=True).to(self.device)
-        #
-        # return 0.5*F.mse_loss(mag_comp_spec_in, mag_comp_spec_out) +\
-        #         0.5*F.mse_loss(comp_split_spec_in, comp_split_spec_out)
 
         comp_spec_in = self.pw_compress_spectrogram(spec_in)
         comp_spec_out = self.pw_compress_spectrogram(spec_out)
@@ -184,9 +156,6 @@ def train(device, net_type, save_path, dataset):
 
             # Do an optimization step
             optimizer.zero_grad()
-			# s_in, s_out, M, Phi = net(sm)
-			# s_in = s_in.to(device)
-			# s_out = s_out.to(device)
             s_out, M, Phi = net(sm)
             loss = criterion(sm, s_out)
             loss_per_pass[dataset_idx] = loss.item()
