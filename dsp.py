@@ -6,6 +6,7 @@ Date: Spring 2021
 from scipy.io.wavfile import read as wavread
 from scipy.signal import resample_poly, stft, check_NOLA, istft
 import numpy as np
+import torch
 import math
 import sys
 
@@ -14,6 +15,8 @@ audio_fs = int(16e3)
 hann_win_length = 0.025 # 25 ms
 hop_length = 0.01 # 10 ms
 fft_size = 512
+K = 10
+C = 0.1
 
 def read_audio_from(path):
     '''
@@ -65,6 +68,61 @@ def resample_signal(data, old_fs, target_fs):
     # This uses the default FIR low pass filter from scipy, which uses a kaiser window
     resampled = resample_poly(data, up, down)
     return resampled
+
+def compute_cIRM_from(S, Y):
+    '''
+    Compute the cIRM from tensors of noisy spectrogram Y and clean speech
+    spectrogram S. The computation is done as in: Williamson, D. S., 
+    Wang, Y., & Wang, D. (2015). Complex ratio masking for monaural speech
+    separation. IEEE/ACM transactions on audio, speech, and language processing,
+    24(3), 483-492.
+    :param: S. A tensor that represents the clean speech.
+            The shape must be (*,2,T,F)
+    :param: Y. A tensor that represents the noisy speech
+            The shape must be (*,2,T,F)
+    :return: M. A tensor that represents the cIRM
+    '''
+    N, Ch, T, F = S.shape
+    M = torch.zeros(N, Ch, T, F)
+    M[:,0,:,:] = torch.div(Y[:,0,:,:]*S[:,0,:,:] + Y[:,1,:,:]*S[:,1,:,:],
+                            Y[:,0,:,:]**2 + Y[:,1,:,:]**2)
+    M[:,1,:,:] = torch.div(Y[:,0,:,:]*S[:,1,:,:] - Y[:,1,:,:]*S[:,0,:,:],
+                            Y[:,0,:,:]**2 + Y[:,1,:,:]**2)
+    return M
+
+def compress_cIRM(M):
+    '''
+    Compress the cIRM tensor M.
+    The computation is done as in: Williamson, D. S., Wang, Y., & Wang, D. (2015).
+    Complex ratio masking for monaural speech separation.
+    IEEE/ACM transactions on audio, speech, and language processing,
+    24(3), 483-492.
+    :param: M. A tensor that represents the cIRM.
+            The shape must be (*,2,T,F)
+    '''
+    cM = M.clone()
+    cM[:,0,:,:] = K*torch.div(1 - torch.exp(-C*M[:,0,:,:]),
+                            1 + torch.exp(-C*M[:,0,:,:]))
+    cM[:,1,:,:] = K*torch.div(1 - torch.exp(-C*M[:,1,:,:]),
+                            1 + torch.exp(-C*M[:,1,:,:]))
+    return cM
+
+def decompress_cIRM(cM):
+    '''
+    Decompress the cIRM tensor cM.
+    The computation is done as in: Williamson, D. S., Wang, Y., & Wang, D. (2015).
+    Complex ratio masking for monaural speech separation.
+    IEEE/ACM transactions on audio, speech, and language processing,
+    24(3), 483-492.
+    :param: cM. A tensor that represents the compressed cIRM.
+            The shape must be (*,2,T,F)
+    '''
+    M = cM.clone()
+    M[:,0,:,:] = (-1/C)*torch.log(torch.div(K - cM[:,0,:,:],
+                                K + cM[:,0,:,:]))
+    M[:,1,:,:] = (-1/C)*torch.log(torch.div(K - cM[:,1,:,:],
+                                K + cM[:,1,:,:]))
+    return M
 
 
 def get_stft_spectrogram(data, fs):
