@@ -18,7 +18,7 @@ Unofficial implementation of the PHASEN network by [Yin et al., (2020)](https://
 
 # Datasets
 
-From the original work of [Yin et al., (2020)](https://ojs.aaai.org/index.php/AAAI/article/view/6489), the [AVSpeech](https://looking-to-listen.github.io/avspeech/index.html) dataset is used along with the [AudioSet](https://research.google.com/audioset/) to create a noisy speech dataset. The contents under the `datasets/AVSpeech` directory correspond to the script to download and process the AVSpeech dataset from the available information on the web on the Spring of 2021. Please note that the CSV files that contain the video ID's from the dataset must be downloaded in advance. Place such files along with the script in the `datasets/AVSpeech` folder. The AudioSet dataset can be downloaded directly by running the script inside `datasets/AudioSet`.
+From the original work of [Yin et al., (2020)](https://ojs.aaai.org/index.php/AAAI/article/view/6489), the [AVSpeech](https://looking-to-listen.github.io/avspeech/index.html) dataset is used along with the [AudioSet](https://research.google.com/audioset/) dataset to create a noisy speech dataset. The bash script under the `datasets/AVSpeech` directory is used to download and process the AVSpeech dataset from the information available on the web. Please note that the CSV files that contain the video ID's from the dataset must be downloaded in advance. Place such files along with the script in the `datasets/AVSpeech` folder. The AudioSet dataset can be downloaded directly by running the script inside `datasets/AudioSet`.
 
 # References
 
@@ -42,4 +42,15 @@ The following is a minimal `bibtex` citation of the work by [Yin et al., (2020)]
 	author={Ephrat, A. and Mosseri, I. and Lang, O. and Dekel, T. and Wilson, K and Hassidim, A. and Freeman, W. T. and Rubinstein, M.},
 	journal={arXiv preprint arXiv:1804.03619},
 	year={2018}
+	}
+
+	# Paper including cIRM computations
+	@article{williamson2015complex,
+	title={Complex ratio masking for monaural speech separation},
+	author={Williamson, Donald S and Wang, Yuxuan and Wang, DeLiang},
+	journal={IEEE/ACM transactions on audio, speech, and language processing},
+	volume={24},
+	number={3},
+	pages={483--492},
+	year={2015}
 	}
