@@ -14,9 +14,6 @@ import dsp
 import custom_datasets
 from torch.autograd import Variable
 import torch.nn.functional as F
-from pystoi import stoi
-from pesq import pesq
-from mir_eval.separation import bss_eval_sources
 torch.autograd.set_detect_anomaly(True)
 
 # --------------- Global variables --------------------------------------------#
@@ -32,7 +29,7 @@ parser.add_argument('dataset', type=str, help='Dataset to train or test. Choices
 
 # Training configuration
 training_config = {
-    'epochs': 1,
+    'epochs': 50,
     'learning_rate': 2e-4,
     'batch_size': 5
 }
@@ -108,6 +105,9 @@ def create_dataset_for(dataset_name, operation):
 
 
 def test(device, net_type, model_path, dataset):
+    from pystoi import stoi
+    from pesq import pesq
+    from mir_eval.separation import bss_eval_sources
     net = create_net_of_type(net_type)
     net.load_state_dict(torch.load(model_path, map_location=device))
     net = net.to(device)
