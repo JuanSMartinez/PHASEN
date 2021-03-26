@@ -72,7 +72,7 @@ def resample_signal(data, old_fs, target_fs):
 def compute_cIRM_from(S, Y):
     '''
     Compute the cIRM from tensors of noisy spectrogram Y and clean speech
-    spectrogram S. The computation is done as in: Williamson, D. S., 
+    spectrogram S. The computation is done as in: Williamson, D. S.,
     Wang, Y., & Wang, D. (2015). Complex ratio masking for monaural speech
     separation. IEEE/ACM transactions on audio, speech, and language processing,
     24(3), 483-492.

@@ -18,7 +18,7 @@ Download_Data_Set(){
 		curl -LO http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/eval_segments.csv
 		cat eval_segments.csv | sed 1,3d > metadata.csv
 		rm eval_segments.csv
-		SIZE=2
+		SIZE=5
 	fi
 
 	CSV_FILE="metadata.csv"
@@ -62,7 +62,10 @@ Download_Data_Set(){
 				break
 			fi
 		done
-		echo "Complete! $SUCCESS files were downloaded and preprocessed in the '$SET' directory."
+		# cleanup
+		find "$SET" -type f ! -name "*.wav" -delete
+		COMPLETE=( $( ls "$SET" | wc -l ) )
+		echo "Complete. $COMPLETE files were downloaded and preprocessed in the '$SET' directory."
 		rm "$CSV_FILE"
 	else
 		echo "ERROR: Metadata for data files not found. Try to run this script again or download CSV files manually."

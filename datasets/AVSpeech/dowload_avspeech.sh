@@ -11,7 +11,7 @@ Download_Data_Set(){
 		SIZE=5
 	else
 		CSV_FILE="avspeech_test.csv"
-		SIZE=2
+		SIZE=5
 	fi
 	PREFIX="http://youtube.com/watch?v="
 
@@ -53,7 +53,10 @@ Download_Data_Set(){
 				break
 			fi
 		done
-		echo "Complete! $SUCCESS files were downloaded and preprocessed in the '$SET' directory."
+		# cleanup
+		find "$SET" -type f ! -name "*.wav" -delete
+		COMPLETE=( $( ls "$SET" | wc -l ) )
+		echo "Complete. $COMPLETE files were downloaded and preprocessed in the '$SET' directory."
 	else
 		echo "ERROR: Metadata for data files not found. Download the files 'avspeech_train.csv' and 'avspeech_test.csv' and place them along this script. Then run again."
 		exit -2
