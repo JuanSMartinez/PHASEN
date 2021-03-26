@@ -56,8 +56,9 @@ class ComplexMSELoss(torch.nn.Module):
         spectrogram
         '''
         mag_spec = torch.sqrt(spec[:,0,:,:]**2 + spec[:,1,:,:]**2 + 1e-8)
+        normalized_spec = torch.div(spec, mag_spec.unsqueeze(1).repeat(1,2,1,1))
         mag_spec = torch.pow(mag_spec.unsqueeze(1).repeat(1,2,1,1), self.p)
-        return mag_spec * spec
+        return mag_spec * normalized_spec
 
     def forward(self, spec_in, spec_out):
 
