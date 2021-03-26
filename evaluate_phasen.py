@@ -32,7 +32,7 @@ parser.add_argument('dataset', type=str, help='Dataset to train or test. Choices
 
 # Training configuration
 training_config = {
-    'epochs': 50,
+    'epochs': 1,
     'learning_rate': 2e-4,
     'batch_size': 5
 }
@@ -55,7 +55,7 @@ class ComplexMSELoss(torch.nn.Module):
         Compute the power-law compressed spectrogram on amplitude of a complex
         spectrogram
         '''
-        mag_spec = torch.sqrt(spec[:,0,:,:]**2 + spec[:,1,:,:]**2)
+        mag_spec = torch.sqrt(spec[:,0,:,:]**2 + spec[:,1,:,:]**2 + 1e-8)
         mag_spec = torch.pow(mag_spec.unsqueeze(1).repeat(1,2,1,1), self.p)
         return mag_spec * spec
 
@@ -63,8 +63,8 @@ class ComplexMSELoss(torch.nn.Module):
 
         comp_spec_in = self.pw_compress_spectrogram(spec_in)
         comp_spec_out = self.pw_compress_spectrogram(spec_out)
-        mag_spec_in = torch.sqrt(comp_spec_in[:,0,:,:]**2 + comp_spec_in[:,1,:,:]**2)
-        mag_spec_out = torch.sqrt(comp_spec_out[:,0,:,:]**2 + comp_spec_out[:,1,:,:]**2)
+        mag_spec_in = torch.sqrt(comp_spec_in[:,0,:,:]**2 + comp_spec_in[:,1,:,:]**2 + 1e-8)
+        mag_spec_out = torch.sqrt(comp_spec_out[:,0,:,:]**2 + comp_spec_out[:,1,:,:]**2 + 1e-8)
         return 0.5*F.mse_loss(mag_spec_in, mag_spec_out) +\
                  0.5*F.mse_loss(comp_spec_in, comp_spec_out)
 
