@@ -52,9 +52,11 @@ Download_Data_Set(){
 				URL="$PREFIX$ID"
 				if youtube-dl -x --audio-format "wav" --audio-quality 0 -o "$OUTPUT" "$URL"
 				then
-					ffmpeg -nostdin -hide_banner -loglevel error -i "$SET/temporal_video_$ID.wav" -ss "$START" -to "$END" -c copy "$SET/$ID.wav"
-					rm "$SET/temporal_video_$ID.wav"
-					((SUCCESS = SUCCESS + 1))
+					if ffmpeg -nostdin -hide_banner -loglevel error -i "$SET/temporal_video_$ID.wav" -ss "$START" -to "$END" -c copy "$SET/$ID.wav"
+					then
+						rm "$SET/temporal_video_$ID.wav"
+						((SUCCESS = SUCCESS + 1))
+					fi
 				fi
 			else
 				break
