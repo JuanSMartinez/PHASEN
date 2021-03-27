@@ -55,6 +55,7 @@ Download_Data_Set(){
 		done
 		# cleanup
 		find "$SET" -type f ! -name "*.wav" -delete
+		find "$SET" -type f -name "*temporal_video_*.wav" -delete
 		COMPLETE=( $( ls "$SET" | wc -l ) )
 		echo "Complete. $COMPLETE files were downloaded and preprocessed in the '$SET' directory."
 	else
