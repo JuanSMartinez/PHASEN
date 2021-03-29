@@ -67,7 +67,14 @@ class ComplexMSELoss(torch.nn.Module):
                  0.5*F.mse_loss(comp_spec_in, comp_spec_out)
 
 
-
+def complex_mse_loss(sgt, sout):
+    mag_sgt = torch.sqrt(sgt[:,0,:,:]**2 + sgt[:,1,:,:]**2 + 1e-8)
+    mag_out = torch.sqrt(sout[:,0,:,:]**2 + sout[:,1,:,:]**2 + 1e-8)
+    pwc_sgt = torch.pow(mag_sgt.unsqueeze(1).repeat(1,2,1,1), 0.3) * torch.div(sgt, mag_sgt.unsqueeze(1).repeat(1,2,1,1))
+    pwc_sout = torch.pow(mag_out.unsqueeze(1).repeat(1,2,1,1), 0.3) * torch.div(sout, mag_out.unsqueeze(1).repeat(1,2,1,1))
+    mag_pwc_sgt = torch.sqrt(pwc_sgt[:,0,:,:]**2 + pwc_sgt[:,1,:,:]**2 + 1e-8)
+    mag_pwc_sout = torch.sqrt(pwc_sout[:,0,:,:]**2 + pwc_sout[:,1,:,:]**2 + 1e-8)
+    return 0.5*F.mse_loss(mag_pwc_sgt, mag_pwc_sout) + 0.5*F.mse_loss(pwc_sgt, pwc_sout)
 
 def find_device():
     '''
@@ -168,7 +175,7 @@ def train(device, net_type, save_path, dataset):
                                         num_workers=1)
     optimizer = torch.optim.Adam(net.parameters(),
                                 lr=training_config['learning_rate'])
-    criterion = ComplexMSELoss(device)
+    #criterion = ComplexMSELoss(device)
     loss_per_epoch = np.zeros((int(training_config['epochs']), 2))
     for epoch in range(training_config['epochs']):
         batch = 0
@@ -184,10 +191,12 @@ def train(device, net_type, save_path, dataset):
             if net_type == 'phasen_1strm' or net_type == 'phasen_baseline':
                 compressed_cIRM = dsp.compress_cIRM(dsp.compute_cIRM_from(st, sm))
                 cIRM_est = net(sm)
-                loss = criterion(compressed_cIRM, cIRM_est)
+                #loss = criterion(compressed_cIRM, cIRM_est)
+                loss = complex_mse_loss(compressed_cIRM, cIRM_est)
             else:
                 s_out, M, Phi = net(sm)
-                loss = criterion(st, s_out)
+                #loss = criterion(st, s_out)
+                loss = complex_mse_loss(st, s_out)
             loss_per_pass[batch] = loss.item()
             loss.backward()
             optimizer.step()
