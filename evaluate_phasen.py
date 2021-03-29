@@ -175,7 +175,7 @@ def train(device, net_type, save_path, dataset):
                                         num_workers=1)
     optimizer = torch.optim.Adam(net.parameters(),
                                 lr=training_config['learning_rate'])
-    #criterion = ComplexMSELoss(device)
+    criterion = ComplexMSELoss(device)
     loss_per_epoch = np.zeros((int(training_config['epochs']), 2))
     for epoch in range(training_config['epochs']):
         batch = 0
@@ -191,18 +191,18 @@ def train(device, net_type, save_path, dataset):
             if net_type == 'phasen_1strm' or net_type == 'phasen_baseline':
                 compressed_cIRM = dsp.compress_cIRM(dsp.compute_cIRM_from(st, sm))
                 cIRM_est = net(sm)
-                #loss = criterion(compressed_cIRM, cIRM_est)
-                loss = complex_mse_loss(compressed_cIRM, cIRM_est)
+                loss = criterion(compressed_cIRM, cIRM_est)
+                #loss = complex_mse_loss(compressed_cIRM, cIRM_est)
             else:
                 s_out, M, Phi = net(sm)
-                #loss = criterion(st, s_out)
-                loss = complex_mse_loss(st, s_out)
+                loss = criterion(st, s_out)
+                #loss = complex_mse_loss(st, s_out)
             loss_per_pass[batch] = loss.item()
             loss.backward()
             optimizer.step()
             batch += 1
             if batch % 10 == 0:
-                print('\t[epoch {}, batch {}] running_loss: {}'.format(epoch+1, batch, loss_per_pass[batch]))
+                print('\t[epoch {}, batch {}] running_loss: {}'.format(epoch+1, batch, loss_per_pass[batch-1]))
         loss_per_epoch[epoch, 0] = loss_per_pass.mean()
         loss_per_epoch[epoch, 1] = loss_per_pass.std(ddof=1)
         print('[epoch {}] loss: {} +/- {}'.format(epoch+1, loss_per_epoch[epoch,0], loss_per_epoch[epoch, 1]))
