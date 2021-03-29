@@ -187,7 +187,7 @@ def train(device, net_type, save_path, dataset):
                 loss = criterion(compressed_cIRM, cIRM_est)
             else:
                 s_out, M, Phi = net(sm)
-                loss = criterion(sm, s_out)
+                loss = criterion(st, s_out)
             loss_per_pass[batch] = loss.item()
             loss.backward()
             optimizer.step()
