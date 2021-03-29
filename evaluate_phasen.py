@@ -201,8 +201,8 @@ def train(device, net_type, save_path, dataset):
             loss.backward()
             optimizer.step()
             batch += 1
-            if batch % 10 == 0:
-                print('\t[epoch {}, batch {}] running_loss: {}'.format(epoch+1, batch, loss_per_pass[batch-1]))
+            #if batch % 100 == 0:
+            #    print('\t[epoch {}, batch {}] running_loss: {}'.format(epoch+1, batch, loss_per_pass[batch-1]))
         loss_per_epoch[epoch, 0] = loss_per_pass.mean()
         loss_per_epoch[epoch, 1] = loss_per_pass.std(ddof=1)
         print('[epoch {}] loss: {} +/- {}'.format(epoch+1, loss_per_epoch[epoch,0], loss_per_epoch[epoch, 1]))
