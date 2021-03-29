@@ -116,7 +116,7 @@ def test(device, net_type, model_path, dataset):
     loader = torch.utils.data.DataLoader(dataset,
                                         batch_size=1,
                                         shuffle=True,
-                                        num_workers=2)
+                                        num_workers=1)
 
     metrics = np.zeros((len(dataset), 3))
     i=0
@@ -165,13 +165,13 @@ def train(device, net_type, save_path, dataset):
     loader = torch.utils.data.DataLoader(dataset,
                                         batch_size=training_config['batch_size'],
                                         shuffle=True,
-                                        num_workers=2)
+                                        num_workers=1)
     optimizer = torch.optim.Adam(net.parameters(),
                                 lr=training_config['learning_rate'])
     criterion = ComplexMSELoss(device)
     loss_per_epoch = np.zeros((int(training_config['epochs']), 2))
     for epoch in range(training_config['epochs']):
-        dataset_idx = 0
+        batch = 0
         loss_per_pass = np.zeros(len(dataset))
         for clean, noisy, st, sm in loader:
             # Put the spectrograms of the mixed signal and ground truth on the
@@ -188,13 +188,15 @@ def train(device, net_type, save_path, dataset):
             else:
                 s_out, M, Phi = net(sm)
                 loss = criterion(sm, s_out)
-            loss_per_pass[dataset_idx] = loss.item()
+            loss_per_pass[batch] = loss.item()
             loss.backward()
             optimizer.step()
-            dataset_idx += 1
+            batch += 1
+            if dataset_idx % 50 == 0:
+                print('\t[epoch {}, batch {}] running_loss: {}'.format(epoch+1, batch, loss_per_pass[batch]))
         loss_per_epoch[epoch, 0] = loss_per_pass.mean()
         loss_per_epoch[epoch, 1] = loss_per_pass.std(ddof=1)
-        print('[epoch {}]: loss: {} +/- {}'.format(epoch+1, loss_per_epoch[epoch,0], loss_per_epoch[epoch, 1]))
+        print('[epoch {}] loss: {} +/- {}'.format(epoch+1, loss_per_epoch[epoch,0], loss_per_epoch[epoch, 1]))
     torch.save(net.state_dict(), save_path)
     np.save(net_type + '_training_loss.npy', loss_per_epoch)
     print("Finished training network '{}'. Model saved in '{}' and loss saved in '{}_training_loss.npy'".format(net_type, save_path, net_type))
