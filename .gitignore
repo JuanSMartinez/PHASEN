@@ -11,3 +11,4 @@ tests.ipynb
 .ipynb_checkpoints/*
 *.pt
 *.npy
+preprocessed_*/
