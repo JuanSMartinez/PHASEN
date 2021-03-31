@@ -111,6 +111,52 @@ def create_dataset_for(dataset_name, operation):
     return dataset
 
 
+def pre_process_test(device, net_type, model_path, dataset):
+    net = create_net_of_type(net_type)
+    net.load_state_dict(torch.load(model_path, map_location=device))
+    net = net.to(device)
+    net.eval()
+    dataset = create_dataset_for(dataset, 'test')
+    loader = torch.utils.data.DataLoader(dataset,
+                                        batch_size=1,
+                                        shuffle=True,
+                                        num_workers=4)
+    i=0
+    for clean, noisy, st, sm in loader:
+        clean_speech = clean.numpy().flatten()
+        noisy_speech = noisy.numpy().flatten()
+        sm = sm.float().to(device)
+        st = st.float().to(device)
+        if net_type == 'phasen_1strm' or net_type == 'phasen_baseline':
+            cIRM_est = net(sm)
+            decompressed_cIRM = dsp.decompress_cIRM(cIRM_est)
+            decompressed_cIRM = decompressed_cIRM.squeeze(0)
+            sm = sm.squeeze(0)
+            C, T, F = decompressed_cIRM.shape
+            sout_c = torch.zeros(T, F, dtype=torch.cfloat)
+            sout_c.real = decompressed_cIRM[0,:,:]*sm[0,:,:] - decompressed_cIRM[1,:,:]*sm[1,:,:]
+            sout_c.imag = decompressed_cIRM[0,:,:]*sm[1,:,:] + decompressed_cIRM[1,:,:]*sm[0,:,:]
+            sout_c = sout_c.T.detach().cpu().numpy()
+        else:
+            s_out, M, Phi = net(sm)
+            # Convert s_out from (1, 2, T, F) to a complex array of shape (F, T)
+            s_out = s_out.squeeze(0)
+            C, T, F = s_out.shape
+            sout_c = torch.zeros(T, F, dtype=torch.cfloat)
+            sout_c.real = s_out[0,:,:]
+            sout_c.imag = s_out[1,:,:]
+            sout_c = sout_c.T.detach().cpu().numpy()
+
+        # Recover time domain signal
+        t, recovered_speech = dsp.recover_from_stft_spectrogram(sout_c, dsp.audio_fs)
+
+        # Save pair of signals
+        pair = np.zeros((len(recovered_speech), 2))
+        pair[:,0] = clean_speech
+        pair[:,1] = recovered_speech
+        np.save('/preprocessed_test_data/pair_' + str(i+1) + 'npy')
+        i += 1
+
 def test(device, net_type, model_path, dataset):
     from pystoi import stoi
     from pesq import pesq
@@ -131,7 +177,6 @@ def test(device, net_type, model_path, dataset):
         clean_speech = clean.numpy().flatten()
         noisy_speech = noisy.numpy().flatten()
         sm = sm.float().to(device)
-        st = st.float().to(device)
         if net_type == 'phasen_1strm' or net_type == 'phasen_baseline':
             cIRM_est = net(sm)
             decompressed_cIRM = dsp.decompress_cIRM(cIRM_est)
@@ -161,8 +206,7 @@ def test(device, net_type, model_path, dataset):
         metrics[i,1] = PESQ
         metrics[i,2] = STOI
         i += 1
-        if i % 100 == 0:
-            print('[Sample {} Complete]'.format(i))
+        print('[Sample {} Complete]'.format(i))
     np.save(net_type + '_metrics.npy', metrics)
     print("Finished testing of net '{}', metrics saved in {}_metrics.npy".format(net_type, net_type))
 
@@ -179,7 +223,7 @@ def train(device, net_type, save_path, dataset):
                                         num_workers=4)
     optimizer = torch.optim.Adam(net.parameters(),
                                 lr=training_config['learning_rate'])
-    criterion = ComplexMSELoss(device)
+    #criterion = ComplexMSELoss(device)
     loss_per_epoch = np.zeros((int(training_config['epochs']), 2))
     for epoch in range(training_config['epochs']):
         batch = 0
@@ -195,12 +239,12 @@ def train(device, net_type, save_path, dataset):
             if net_type == 'phasen_1strm' or net_type == 'phasen_baseline':
                 compressed_cIRM = dsp.compress_cIRM(dsp.compute_cIRM_from(st, sm)).to(device)
                 cIRM_est = net(sm)
-                loss = criterion(compressed_cIRM, cIRM_est)
-                #loss = complex_mse_loss(compressed_cIRM, cIRM_est)
+                #loss = criterion(compressed_cIRM, cIRM_est)
+                loss = complex_mse_loss(compressed_cIRM, cIRM_est)
             else:
                 s_out, M, Phi = net(sm)
-                loss = criterion(st, s_out)
-                #loss = complex_mse_loss(st, s_out)
+                #loss = criterion(st, s_out)
+                loss = complex_mse_loss(st, s_out)
             loss_per_pass[batch] = loss.item()
             loss.backward()
             optimizer.step()
