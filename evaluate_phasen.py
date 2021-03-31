@@ -123,7 +123,7 @@ def test(device, net_type, model_path, dataset):
     loader = torch.utils.data.DataLoader(dataset,
                                         batch_size=1,
                                         shuffle=True,
-                                        num_workers=1)
+                                        num_workers=4)
 
     metrics = np.zeros((len(dataset), 3))
     i=0
@@ -161,6 +161,8 @@ def test(device, net_type, model_path, dataset):
         metrics[i,1] = PESQ
         metrics[i,2] = STOI
         i += 1
+        if i % 100 == 0:
+            print('[Sample {} Complete]'.format(i))
     np.save(net_type + '_metrics.npy', metrics)
     print("Finished testing of net '{}', metrics saved in {}_metrics.npy".format(net_type, net_type))
 
@@ -168,11 +170,13 @@ def test(device, net_type, model_path, dataset):
 def train(device, net_type, save_path, dataset):
     net = create_net_of_type(net_type)
     net = net.to(device)
+    pytorch_total_params = sum(p.numel() for p in net.parameters())
+    print("Total params: {}".format(pytorch_total_params))
     dataset = create_dataset_for(dataset, 'train')
     loader = torch.utils.data.DataLoader(dataset,
                                         batch_size=training_config['batch_size'],
                                         shuffle=True,
-                                        num_workers=1)
+                                        num_workers=4)
     optimizer = torch.optim.Adam(net.parameters(),
                                 lr=training_config['learning_rate'])
     criterion = ComplexMSELoss(device)
@@ -189,7 +193,7 @@ def train(device, net_type, save_path, dataset):
             # Do an optimization step
             optimizer.zero_grad()
             if net_type == 'phasen_1strm' or net_type == 'phasen_baseline':
-                compressed_cIRM = dsp.compress_cIRM(dsp.compute_cIRM_from(st, sm))
+                compressed_cIRM = dsp.compress_cIRM(dsp.compute_cIRM_from(st, sm)).to(device)
                 cIRM_est = net(sm)
                 loss = criterion(compressed_cIRM, cIRM_est)
                 #loss = complex_mse_loss(compressed_cIRM, cIRM_est)
