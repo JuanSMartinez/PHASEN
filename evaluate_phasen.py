@@ -302,7 +302,7 @@ if __name__ == "__main__":
             else:
                 print('The model "{}" could not be found. Train it first'.format(model_path))
         elif operation == 'preprocess_test':
-            print('Operation "{}" started on device "cpu".'.format(operation))
+            print('Operation "{}" started on device "{}".'.format(operation, device))
             model_path = net_type + ".pt"
             if os.path.exists(model_path):
                 os.mkdir('preprocessed_test_data_'+net_type)
