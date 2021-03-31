@@ -120,7 +120,7 @@ def pre_process_test(device, net_type, model_path, dataset):
     loader = torch.utils.data.DataLoader(dataset,
                                         batch_size=1,
                                         shuffle=True,
-                                        num_workers=4)
+                                        num_workers=1)
     i=0
     for clean, noisy, st, sm in loader:
         clean_speech = clean.numpy().flatten()
@@ -156,8 +156,10 @@ def pre_process_test(device, net_type, model_path, dataset):
         pair[:,1] = recovered_speech
         np.save('preprocessed_test_data_'+net_type+'/pair_' + str(i+1) + '.npy', pair)
         print('[Pair of clean and recovered speech #{} complete]'.format(i+1))
+        sys.stdout.flush()
         i += 1
     print("Finished pre-processing test data for net '{}', data saved in preprocessed_test_data_{}".format(net_type, net_type))
+    sys.stdout.flush()
 
 def test(device, net_type, model_path, dataset):
     from pystoi import stoi
@@ -171,7 +173,7 @@ def test(device, net_type, model_path, dataset):
     loader = torch.utils.data.DataLoader(dataset,
                                         batch_size=1,
                                         shuffle=True,
-                                        num_workers=4)
+                                        num_workers=1)
 
     metrics = np.zeros((len(dataset), 3))
     i=0
@@ -209,8 +211,10 @@ def test(device, net_type, model_path, dataset):
         metrics[i,2] = STOI
         i += 1
         print('[Sample {} Complete]'.format(i))
+        sys.stdout.flush()
     np.save(net_type + '_metrics.npy', metrics)
     print("Finished testing of net '{}', metrics saved in {}_metrics.npy".format(net_type, net_type))
+    sys.stdout.flush()
 
 
 def train(device, net_type, save_path, dataset):
@@ -222,7 +226,7 @@ def train(device, net_type, save_path, dataset):
     loader = torch.utils.data.DataLoader(dataset,
                                         batch_size=training_config['batch_size'],
                                         shuffle=True,
-                                        num_workers=4)
+                                        num_workers=1)
     optimizer = torch.optim.Adam(net.parameters(),
                                 lr=training_config['learning_rate'])
     #criterion = ComplexMSELoss(device)
@@ -256,9 +260,11 @@ def train(device, net_type, save_path, dataset):
         loss_per_epoch[epoch, 0] = loss_per_pass.mean()
         loss_per_epoch[epoch, 1] = loss_per_pass.std(ddof=1)
         print('[epoch {}] loss: {} +/- {}'.format(epoch+1, loss_per_epoch[epoch,0], loss_per_epoch[epoch, 1]))
+        sys.stdout.flush()
     torch.save(net.state_dict(), save_path)
     np.save(net_type + '_training_loss.npy', loss_per_epoch)
     print("Finished training network '{}'. Model saved in '{}' and loss saved in '{}_training_loss.npy'".format(net_type, save_path, net_type))
+    sys.stdout.flush()
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
