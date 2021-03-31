@@ -154,7 +154,7 @@ def pre_process_test(device, net_type, model_path, dataset):
         pair = np.zeros((len(recovered_speech), 2))
         pair[:,0] = clean_speech
         pair[:,1] = recovered_speech
-        np.save('/preprocessed_test_data/pair_' + str(i+1) + 'npy')
+        np.save('/preprocessed_test_data/pair_' + str(i+1) + '.npy', pair)
         i += 1
 
 def test(device, net_type, model_path, dataset):
