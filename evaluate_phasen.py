@@ -154,7 +154,8 @@ def pre_process_test(device, net_type, model_path, dataset):
         pair = np.zeros((len(recovered_speech), 2))
         pair[:,0] = clean_speech
         pair[:,1] = recovered_speech
-        np.save('/preprocessed_test_data_'+net_type+'/pair_' + str(i+1) + '.npy', pair)
+        np.save('preprocessed_test_data_'+net_type+'/pair_' + str(i+1) + '.npy', pair)
+        print('[Pair of clean and recovered speech #{} complete]'.format(i+1))
         i += 1
     print("Finished pre-processing test data for net '{}', data saved in preprocessed_test_data_{}".format(net_type, net_type))
 
@@ -304,7 +305,7 @@ if __name__ == "__main__":
             print('Operation "{}" started on device "cpu".'.format(operation))
             model_path = net_type + ".pt"
             if os.path.exists(model_path):
-                os.path.mkdir('preprocessed_test_data_'+net_type)
+                os.mkdir('preprocessed_test_data_'+net_type)
                 pre_process_test(device, net_type, model_path, dataset)
             else:
                 print('The model "{}" could not be found. Train it first'.format(model_path))
