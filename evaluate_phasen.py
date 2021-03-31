@@ -23,7 +23,7 @@ networks = ['phasen', 'phasen_baseline', 'phasen_1strm', 'phasen_no_ftb', 'phase
 
 # Argument parser to run the script
 parser = argparse.ArgumentParser(description='Evaluate the PHASEN network')
-parser.add_argument('operation', type=str, help='Type of operation on a network. Either "train" or "test"')
+parser.add_argument('operation', type=str, help='Type of operation on a network. Either "train", "test" or "preprocess_test"')
 parser.add_argument('net', type=str, help='Type of network to evaluate. Choices: ' + ','.join(networks))
 parser.add_argument('dataset', type=str, help='Dataset to train or test. Choices: "avspeech_audioset"')
 
@@ -154,8 +154,9 @@ def pre_process_test(device, net_type, model_path, dataset):
         pair = np.zeros((len(recovered_speech), 2))
         pair[:,0] = clean_speech
         pair[:,1] = recovered_speech
-        np.save('/preprocessed_test_data/pair_' + str(i+1) + '.npy', pair)
+        np.save('/preprocessed_test_data_'+net_type+'/pair_' + str(i+1) + '.npy', pair)
         i += 1
+    print("Finished pre-processing test data for net '{}', data saved in preprocessed_test_data_{}".format(net_type, net_type))
 
 def test(device, net_type, model_path, dataset):
     from pystoi import stoi
@@ -263,8 +264,8 @@ if __name__ == "__main__":
     operation = args['operation']
     net_type = args['net']
     dataset = args['dataset']
-    if not operation == 'train' and not operation == 'test':
-        print('Invalid choice for the type of operation. Choose "train" or "test"')
+    if not operation == 'train' and not operation == 'test' and not operation == 'preprocess_test':
+        print('Invalid choice for the type of operation. Choose "train", "test" or "preprocess_test"')
         sys.exit(1)
     elif net_type not in networks:
         print('Invalid type of network to evaluate. Available choices: ' + ','.join(networks))
@@ -297,5 +298,13 @@ if __name__ == "__main__":
             model_path = net_type + ".pt"
             if os.path.exists(model_path):
                 test(device, net_type, model_path, dataset)
+            else:
+                print('The model "{}" could not be found. Train it first'.format(model_path))
+        elif operation == 'preprocess_test':
+            print('Operation "{}" started on device "cpu".'.format(operation))
+            model_path = net_type + ".pt"
+            if os.path.exists(model_path):
+                os.path.mkdir('preprocessed_test_data_'+net_type)
+                pre_process_test(device, net_type, model_path, dataset)
             else:
                 print('The model "{}" could not be found. Train it first'.format(model_path))
