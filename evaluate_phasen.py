@@ -31,7 +31,7 @@ parser.add_argument('dataset', type=str, help='Dataset to train or test. Choices
 training_config = {
     'epochs': 50,
     'learning_rate': 2e-4,
-    'batch_size': 5
+    'batch_size': 8
 }
 
 # Random seed
@@ -63,8 +63,8 @@ class ComplexMSELoss(torch.nn.Module):
         comp_spec_out = self.pw_compress_spectrogram(spec_out)
         mag_spec_in = torch.sqrt(comp_spec_in[:,0,:,:]**2 + comp_spec_in[:,1,:,:]**2 + 1e-8)
         mag_spec_out = torch.sqrt(comp_spec_out[:,0,:,:]**2 + comp_spec_out[:,1,:,:]**2 + 1e-8)
-        return 0.5*F.mse_loss(mag_spec_in, mag_spec_out) +\
-                 0.5*F.mse_loss(comp_spec_in, comp_spec_out)
+        return 0.5*F.mse_loss(mag_spec_in, mag_spec_out, reduction='sum') +\
+                 0.5*F.mse_loss(comp_spec_in, comp_spec_out, reduction='sum')
 
 def complex_mse_loss(sgt, sout):
     mag_sgt = torch.sqrt(sgt[:,0,:,:]**2 + sgt[:,1,:,:]**2 + 1e-8)
@@ -266,6 +266,10 @@ def train(device, net_type, save_path, dataset):
         batch = 0
         loss_per_pass = np.zeros(len(dataset))
         for clean, noisy, st, sm in loader:
+            if batch < total_batches-1:
+                print('\t[epoch {}] mini-batch progress: {}%'.format(epoch+1, 100.0*batch/total_batches), end='\r')
+            else:
+                print('\t[epoch {}] mini-batch progress: {}%'.format(epoch+1, 100.0*batch/total_batches), end='\n')
             # Put the spectrograms of the mixed signal and ground truth on the
             # training device
             sm = sm.float().to(device)
@@ -286,10 +290,7 @@ def train(device, net_type, save_path, dataset):
             loss.backward()
             optimizer.step()
             batch += 1
-            if batch < total_batches:
-                print('\t[epoch {}] mini-batch progress: {}%, running_loss: {}'.format(epoch+1, 100.0*batch/total_batches, loss_per_pass[batch-1]), end='\r')
-            else:
-                print('\t[epoch {}] mini-batch progress: {}%, running_loss: {}'.format(epoch+1, 100.0*batch/total_batches, loss_per_pass[batch-1]), end='\n')
+
         loss_per_epoch[epoch, 0] = loss_per_pass.mean()
         loss_per_epoch[epoch, 1] = loss_per_pass.std(ddof=1)
         print('[epoch {}] loss: {} +/- {}'.format(epoch+1, loss_per_epoch[epoch,0], loss_per_epoch[epoch, 1]))
@@ -297,7 +298,6 @@ def train(device, net_type, save_path, dataset):
     torch.save(net.state_dict(), save_path)
     np.save(net_type + '_training_loss.npy', loss_per_epoch)
     print("Finished training network '{}'. Model saved in '{}' and loss saved in '{}_training_loss.npy'".format(net_type, save_path, net_type))
-
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())

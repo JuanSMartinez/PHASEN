@@ -8,20 +8,22 @@ Download_Data_Set(){
 	echo "Downloading metadata file ..."
 	if [ "$SET" == "train" ]
 	then
-		# The paper declares to have used the 'Balanced train' set. But this set only has ~22k videos. We use the 'Unbalanced train' set here.
-		curl -LO http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/unbalanced_train_segments.csv
-		cat unbalanced_train_segments.csv | sed 1,3d > metadata.csv
-		rm unbalanced_train_segments.csv
+		# The paper declares to have used the 'Balanced train' set.
+		curl -LO http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/balanced_train_segments.csv
+		cat balanced_train_segments.csv | sed 1,3d > metadata_train.csv
+		rm balanced_train_segments.csv
+		CSV_FILE="metadata_train.csv"
 		SIZE=5
 	else
 		# For testing, we use the 'Eval_segments' set
 		curl -LO http://storage.googleapis.com/us_audioset/youtube_corpus/v1/csv/eval_segments.csv
-		cat eval_segments.csv | sed 1,3d > metadata.csv
+		cat eval_segments.csv | sed 1,3d > metadata_test.csv
 		rm eval_segments.csv
+		CSV_FILE="metadata_test.csv"
 		SIZE=5
 	fi
 
-	CSV_FILE="metadata.csv"
+
 	PREFIX="http://youtube.com/watch?v="
 
 	SUCCESS=0
