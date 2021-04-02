@@ -50,8 +50,8 @@ class AVSpeechAudioSet(Dataset):
 
         # Combine the signals as in the original paper
 
-        # In case one of the signals is shorter, padd with zeros
-        max_len = max(len(clipped_speech), len(clipped_noise))
+        # In case one of the signals is shorter than 3 seconds, padd with zeros
+        max_len = int(3*dsp.audio_fs)
         if len(clipped_speech) < max_len:
             clipped_speech = dsp.padd_signal(clipped_speech, max_len - len(clipped_speech))
         if len(clipped_noise) < max_len:
