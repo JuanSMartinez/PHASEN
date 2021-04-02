@@ -30,8 +30,8 @@ parser.add_argument('dataset', type=str, help='Dataset to train or test. Choices
 # Training configuration
 training_config = {
     'epochs': 50,
-    'learning_rate': 2e-4,
-    'batch_size': 8
+    'learning_rate': 2e-6,
+    'batch_size': 5
 }
 
 # Random seed
@@ -73,7 +73,7 @@ def complex_mse_loss(sgt, sout):
     pwc_sout = torch.pow(mag_out.unsqueeze(1).repeat(1,2,1,1), 0.3) * torch.div(sout, mag_out.unsqueeze(1).repeat(1,2,1,1))
     mag_pwc_sgt = torch.sqrt(pwc_sgt[:,0,:,:]**2 + pwc_sgt[:,1,:,:]**2 + 1e-8)
     mag_pwc_sout = torch.sqrt(pwc_sout[:,0,:,:]**2 + pwc_sout[:,1,:,:]**2 + 1e-8)
-    return 0.5*F.mse_loss(mag_pwc_sgt, mag_pwc_sout) + 0.5*F.mse_loss(pwc_sgt, pwc_sout)
+    return 0.5*F.mse_loss(mag_pwc_sgt, mag_pwc_sout, reduction='sum') + 0.5*F.mse_loss(pwc_sgt, pwc_sout, reduction='sum')
 
 def find_device():
     '''
@@ -266,10 +266,6 @@ def train(device, net_type, save_path, dataset):
         batch = 0
         loss_per_pass = np.zeros(len(dataset))
         for clean, noisy, st, sm in loader:
-            if batch < total_batches-1:
-                print('\t[epoch {}] mini-batch progress: {}%'.format(epoch+1, 100.0*batch/total_batches), end='\r')
-            else:
-                print('\t[epoch {}] mini-batch progress: {}%'.format(epoch+1, 100.0*batch/total_batches), end='\n')
             # Put the spectrograms of the mixed signal and ground truth on the
             # training device
             sm = sm.float().to(device)
@@ -286,10 +282,14 @@ def train(device, net_type, save_path, dataset):
                 s_out, M, Phi = net(sm)
                 loss = criterion(st, s_out)
                 #loss = complex_mse_loss(st, s_out)
-            loss_per_pass[batch] = loss.item()
             loss.backward()
+            loss_per_pass[batch] = loss.item()
             optimizer.step()
             batch += 1
+            if batch < total_batches-1:
+                print('\t[epoch {}] mini-batch progress: {}%'.format(epoch+1, 100.0*batch/total_batches), end='\r')
+            else:
+                print('\t[epoch {}] mini-batch progress: {}%'.format(epoch+1, 100.0*batch/total_batches), end='\n')
 
         loss_per_epoch[epoch, 0] = loss_per_pass.mean()
         loss_per_epoch[epoch, 1] = loss_per_pass.std(ddof=1)
