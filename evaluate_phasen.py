@@ -30,7 +30,7 @@ parser.add_argument('dataset', type=str, help='Dataset to train or test. Choices
 # Training configuration
 training_config = {
     'epochs': 50,
-    'learning_rate': 1e-4,
+    'learning_rate': 2e-4,
     'batch_size': 5
 }
 
@@ -259,7 +259,7 @@ def train(device, net_type, save_path, dataset):
                                         num_workers=1)
     optimizer = torch.optim.Adam(net.parameters(),
                                 lr=training_config['learning_rate'])
-    criterion = ComplexMSELoss(device)
+    #criterion = ComplexMSELoss(device)
     loss_per_epoch = np.zeros((int(training_config['epochs']), 2))
     total_batches = len(dataset)/training_config['batch_size']
     for epoch in range(training_config['epochs']):
@@ -276,12 +276,12 @@ def train(device, net_type, save_path, dataset):
             if net_type == 'phasen_1strm' or net_type == 'phasen_baseline':
                 compressed_cIRM = dsp.compress_cIRM(dsp.compute_cIRM_from(st, sm)).to(device)
                 cIRM_est = net(sm)
-                loss = criterion(compressed_cIRM, cIRM_est)
-                #loss = complex_mse_loss(compressed_cIRM, cIRM_est)
+                #loss = criterion(compressed_cIRM, cIRM_est)
+                loss = complex_mse_loss(compressed_cIRM, cIRM_est)
             else:
                 s_out, M, Phi = net(sm)
-                loss = criterion(st, s_out)
-                #loss = complex_mse_loss(st, s_out)
+                #loss = criterion(st, s_out)
+                loss = complex_mse_loss(st, s_out)
             loss.backward()
             loss_per_pass[batch] = loss.item()
             optimizer.step()
