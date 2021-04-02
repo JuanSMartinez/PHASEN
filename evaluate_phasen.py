@@ -30,7 +30,7 @@ parser.add_argument('dataset', type=str, help='Dataset to train or test. Choices
 # Training configuration
 training_config = {
     'epochs': 50,
-    'learning_rate': 2e-6,
+    'learning_rate': 1e-4,
     'batch_size': 5
 }
 
