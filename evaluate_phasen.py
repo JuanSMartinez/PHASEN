@@ -33,7 +33,7 @@ parser.add_argument('--iteration', type=int, help='Iteration number when continu
 
 # Training configuration
 training_config = {
-    'epochs': 50,
+    'epochs': 1,
     'learning_rate': 2e-5,
     'batch_size': 5
 }
@@ -279,7 +279,7 @@ def train(device, net_type, save_path, dataset):
 
     torch.save(net.state_dict(), save_path)
     torch.save(optimizer.state_dict(), net_type + '_optim.pt')
-    np.save(net_type + '_training_loss.npy', loss_per_epoch)
+    np.save(net_type + '_training_loss_1.npy', loss_per_epoch)
     print("Finished training network '{}'. Model saved in '{}', loss saved in '{}_training_loss_1.npy' and optimizer saved in '{}'_optim.pt".format(net_type, save_path, net_type, net_type))
 
 def continue_training(device, net_type, dataset, iteration):
@@ -337,11 +337,11 @@ def continue_training(device, net_type, dataset, iteration):
         loss_per_epoch[epoch, 1] = loss_per_pass.std(ddof=1)
         print('[epoch {}] loss: {} +/- {}'.format(epoch+1, loss_per_epoch[epoch,0], loss_per_epoch[epoch, 1]))
 
-    torch.save(net.state_dict(), save_path)
+    torch.save(net.state_dict(), net_path)
     torch.save(optimizer.state_dict(), net_type + '_optim.pt')
     np.save(net_type + '_training_loss_'+str(iteration)+'.npy', loss_per_epoch)
-    print("Finished training network '{}' on iteration {}. Model saved in '{}', loss saved in '{}_training_loss_{}.npy' \
-     and optimizer saved in '{}'_optim.pt".format(net_type, iteration, save_path, net_type, iteration, net_type))
+    print("Finished training network '{}' on iteration {}. Model updated in '{}', loss saved in '{}_training_loss_{}.npy' \
+     and optimizer updated in '{}'_optim.pt".format(net_type, iteration, net_path, net_type, iteration, net_type))
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
@@ -399,6 +399,9 @@ if __name__ == "__main__":
         elif operation == "continue_training":
             if iteration:
                 print('Operation "{}" started on device "{}".'.format(operation, device))
+                if iteration < 2:
+                    print("WARNING: If you are running this option you most likely are doing a second pass of training. Therefore,\
+                     'iteration' should be larger or equal to 2.")
                 continue_training(device, net_type, dataset, iteration)
             else:
                 print("ERROR: Iteration number needed when continuing training")
