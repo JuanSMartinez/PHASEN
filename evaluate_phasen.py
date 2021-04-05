@@ -19,7 +19,7 @@ torch.autograd.set_detect_anomaly(True)
 # --------------- Global variables --------------------------------------------#
 
 # Available networks to perform ablation studies
-networks = ['phasen', 'phasen_baseline', 'phasen_1strm', 'phasen_no_ftb', 'phasen_no_a2pp2a', 'phasen_no_p2a']
+networks = ['phasen', 'phasen_baseline', 'phasen_1strm', 'phasen_no_ftb', 'phasen_no_a2pp2a', 'phasen_no_p2a', 'altphasen']
 
 # Available operations
 operations = ["train", "continue_training", "test", "preprocess_test", "test_preprocessed_data"]
@@ -33,7 +33,7 @@ parser.add_argument('--iteration', type=int, help='Iteration number when continu
 
 # Training configuration
 training_config = {
-    'epochs': 1,
+    'epochs': 50,
     'learning_rate': 2e-5,
     'batch_size': 5
 }
@@ -78,6 +78,8 @@ def create_net_of_type(net_type):
         return phasen.PHASEN_without_A2PP2A()
     elif net_type == 'phasen_no_p2a':
         return phasen.PHASEN_without_P2A()
+    elif net_type == 'altphasen':
+        return phasen.AltPHASEN(N=training_config['batch_size'])
     else:
         return None
 

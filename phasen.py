@@ -77,7 +77,7 @@ class AltFTB(nn.Module):
                 nn.ReLU()
                 )
         self.h = torch.rand(2, N, F)
-        self.c = torch.rand(2, N, C)
+        self.c = torch.rand(2, N, F)
         self.att_lstm = nn.LSTM(F*Cr, F, num_layers=1, batch_first=True, bidirectional=True)
         self.att_linear = nn.Sequential(
                         nn.Linear(2*F, F),
