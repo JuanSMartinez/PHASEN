@@ -102,9 +102,7 @@ class AltFTB(nn.Module):
         N, Cr, T, F = x_att.shape
         x_att = x_att.permute(0,2,1,3)
         x_att = x_att.reshape(N, T, F*Cr)
-        x_att, (h, c) = self.att_lstm(x_att, (self.h, self.c))
-        self.h = h
-        self.c = c
+        x_att, _ = self.att_lstm(x_att, (self.h, self.c))
         x_att = self.att_linear(x_att)
 
         # Point-wise multiply
