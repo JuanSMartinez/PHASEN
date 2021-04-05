@@ -129,16 +129,19 @@ def pre_process_test(device, net_type, model_path, dataset):
         clean_speech = clean.numpy().flatten()
         noisy_speech = noisy.numpy().flatten()
         sm = sm.float().to(device)
-        st = st.float().to(device)
         if net_type == 'phasen_1strm' or net_type == 'phasen_baseline':
             cIRM_est = net(sm)
-            decompressed_cIRM = dsp.decompress_cIRM(cIRM_est)
-            decompressed_cIRM = decompressed_cIRM.squeeze(0)
+            #decompressed_cIRM = dsp.decompress_cIRM(cIRM_est)
+            #decompressed_cIRM = decompressed_cIRM.squeeze(0)
+            cIRM_est = cIRM_est.squeeze(0)
             sm = sm.squeeze(0)
-            C, T, F = decompressed_cIRM.shape
+            #C, T, F = decompressed_cIRM.shape
+            C, T, F = cIRM_est.shape
             sout_c = torch.zeros(T, F, dtype=torch.cfloat)
-            sout_c.real = decompressed_cIRM[0,:,:]*sm[0,:,:] - decompressed_cIRM[1,:,:]*sm[1,:,:]
-            sout_c.imag = decompressed_cIRM[0,:,:]*sm[1,:,:] + decompressed_cIRM[1,:,:]*sm[0,:,:]
+            #sout_c.real = decompressed_cIRM[0,:,:]*sm[0,:,:] - decompressed_cIRM[1,:,:]*sm[1,:,:]
+            #sout_c.imag = decompressed_cIRM[0,:,:]*sm[1,:,:] + decompressed_cIRM[1,:,:]*sm[0,:,:]
+            sout_c.real = cIRM_est[0,:,:]*sm[0,:,:] - cIRM_est[1,:,:]*sm[1,:,:]
+            sout_c.imag = cIRM_est[0,:,:]*sm[1,:,:] + cIRM_est[1,:,:]*sm[0,:,:]
             sout_c = sout_c.T.detach().cpu().numpy()
         else:
             s_out, M, Phi = net(sm)
@@ -219,13 +222,17 @@ def test(device, net_type, model_path, dataset):
         sm = sm.float().to(device)
         if net_type == 'phasen_1strm' or net_type == 'phasen_baseline':
             cIRM_est = net(sm)
-            decompressed_cIRM = dsp.decompress_cIRM(cIRM_est)
-            decompressed_cIRM = decompressed_cIRM.squeeze(0)
+            #decompressed_cIRM = dsp.decompress_cIRM(cIRM_est)
+            #decompressed_cIRM = decompressed_cIRM.squeeze(0)
+            cIRM_est = cIRM_est.squeeze(0)
             sm = sm.squeeze(0)
-            C, T, F = decompressed_cIRM.shape
+            #C, T, F = decompressed_cIRM.shape
+            C, T, F = cIRM_est.shape
             sout_c = torch.zeros(T, F, dtype=torch.cfloat)
-            sout_c.real = decompressed_cIRM[0,:,:]*sm[0,:,:] - decompressed_cIRM[1,:,:]*sm[1,:,:]
-            sout_c.imag = decompressed_cIRM[0,:,:]*sm[1,:,:] + decompressed_cIRM[1,:,:]*sm[0,:,:]
+            #sout_c.real = decompressed_cIRM[0,:,:]*sm[0,:,:] - decompressed_cIRM[1,:,:]*sm[1,:,:]
+            #sout_c.imag = decompressed_cIRM[0,:,:]*sm[1,:,:] + decompressed_cIRM[1,:,:]*sm[0,:,:]
+            sout_c.real = cIRM_est[0,:,:]*sm[0,:,:] - cIRM_est[1,:,:]*sm[1,:,:]
+            sout_c.imag = cIRM_est[0,:,:]*sm[1,:,:] + cIRM_est[1,:,:]*sm[0,:,:]
             sout_c = sout_c.T.detach().cpu().numpy()
         else:
             s_out, M, Phi = net(sm)
