@@ -21,11 +21,15 @@ torch.autograd.set_detect_anomaly(True)
 # Available networks to perform ablation studies
 networks = ['phasen', 'phasen_baseline', 'phasen_1strm', 'phasen_no_ftb', 'phasen_no_a2pp2a', 'phasen_no_p2a']
 
+# Available operations
+operations = ["train", "continue_training", "test", "preprocess_test", "test_preprocessed_data"]
+
 # Argument parser to run the script
 parser = argparse.ArgumentParser(description='Evaluate the PHASEN network')
 parser.add_argument('operation', type=str, help='Type of operation on a network. Either "train", "test", "preprocess_test", "test_preprocessed_data" ')
 parser.add_argument('net', type=str, help='Type of network to evaluate. Choices: ' + ','.join(networks))
 parser.add_argument('dataset', type=str, help='Dataset to train or test. Choices: "avspeech_audioset"')
+parser.add_argument('--iteration', type=int, help='Iteration number when continuing training')
 
 # Training configuration
 training_config = {
@@ -40,34 +44,6 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 
 # -----------------------------------------------------------------------------#
-
-class ComplexMSELoss(torch.nn.Module):
-    def __init__(self, device, p=0.3):
-        super(ComplexMSELoss, self).__init__()
-        self.p = p
-        self.device = device
-
-    def pw_compress_spectrogram(self, spec):
-        '''
-        Compute the power-law compressed spectrogram on amplitude of a complex
-        spectrogram
-        '''
-        mag_spec = torch.sqrt(spec[:,0,:,:]**2 + spec[:,1,:,:]**2 + 1e-8)
-        normalized_spec = torch.div(spec, mag_spec.unsqueeze(1).repeat(1,2,1,1))
-        mag_spec = torch.pow(mag_spec.unsqueeze(1).repeat(1,2,1,1), self.p)
-        return mag_spec * normalized_spec
-
-    def forward(self, spec_in, spec_out):
-
-        comp_spec_in = self.pw_compress_spectrogram(spec_in)
-        comp_spec_out = self.pw_compress_spectrogram(spec_out)
-        mag_spec_in = torch.sqrt(comp_spec_in[:,0,:,:]**2 + comp_spec_in[:,1,:,:]**2 + 1e-8)
-        mag_spec_out = torch.sqrt(comp_spec_out[:,0,:,:]**2 + comp_spec_out[:,1,:,:]**2 + 1e-8)
-        return 0.5*F.mse_loss(mag_spec_in, mag_spec_out, reduction='sum') +\
-                 0.5*F.mse_loss(comp_spec_in, comp_spec_out, reduction='sum')
-
-def cIRM_loss(s_in, s_out):
-    return F.mse_loss(s_in, s_out, reduction='sum')
 
 def complex_mse_loss(sgt, sout):
     mag_sgt = torch.sqrt(sgt[:,0,:,:]**2 + sgt[:,1,:,:]**2 + 1e-8)
@@ -120,26 +96,24 @@ def pre_process_test(device, net_type, model_path, dataset):
     net = net.to(device)
     net.eval()
     dataset = create_dataset_for(dataset, 'test')
+    total_samples = len(dataset)
     loader = torch.utils.data.DataLoader(dataset,
                                         batch_size=1,
                                         shuffle=True,
                                         num_workers=1)
     i=0
+    print("Saving pairs of clean and recovered speech")
     for clean, noisy, st, sm in loader:
         clean_speech = clean.numpy().flatten()
         noisy_speech = noisy.numpy().flatten()
         sm = sm.float().to(device)
         if net_type == 'phasen_1strm' or net_type == 'phasen_baseline':
             cIRM_est = net(sm)
-            #decompressed_cIRM = dsp.decompress_cIRM(cIRM_est)
-            #decompressed_cIRM = decompressed_cIRM.squeeze(0)
             cIRM_est = cIRM_est.squeeze(0)
             sm = sm.squeeze(0)
             #C, T, F = decompressed_cIRM.shape
             C, T, F = cIRM_est.shape
             sout_c = torch.zeros(T, F, dtype=torch.cfloat)
-            #sout_c.real = decompressed_cIRM[0,:,:]*sm[0,:,:] - decompressed_cIRM[1,:,:]*sm[1,:,:]
-            #sout_c.imag = decompressed_cIRM[0,:,:]*sm[1,:,:] + decompressed_cIRM[1,:,:]*sm[0,:,:]
             sout_c.real = cIRM_est[0,:,:]*sm[0,:,:] - cIRM_est[1,:,:]*sm[1,:,:]
             sout_c.imag = cIRM_est[0,:,:]*sm[1,:,:] + cIRM_est[1,:,:]*sm[0,:,:]
             sout_c = sout_c.T.detach().cpu().numpy()
@@ -161,11 +135,12 @@ def pre_process_test(device, net_type, model_path, dataset):
         pair[:,0] = clean_speech
         pair[:,1] = recovered_speech
         np.save('preprocessed_test_data_'+net_type+'/pair_' + str(i+1) + '.npy', pair)
-        print('[Pair of clean and recovered speech #{} complete]'.format(i+1))
-        sys.stdout.flush()
+        if i < total_samples-1:
+            print('[Process {}% complete]'.format(100.0*(i+1)/total_samples), end='\r')
+        else:
+            print('[Process {}% complete]'.format(100.0*(i+1)/total_samples), end='\n')
         i += 1
     print("Finished pre-processing test data for net '{}', data saved in preprocessed_test_data_{}".format(net_type, net_type))
-    sys.stdout.flush()
 
 def test_preprocessed_data(net_type):
     from pystoi import stoi
@@ -222,15 +197,11 @@ def test(device, net_type, model_path, dataset):
         sm = sm.float().to(device)
         if net_type == 'phasen_1strm' or net_type == 'phasen_baseline':
             cIRM_est = net(sm)
-            #decompressed_cIRM = dsp.decompress_cIRM(cIRM_est)
-            #decompressed_cIRM = decompressed_cIRM.squeeze(0)
             cIRM_est = cIRM_est.squeeze(0)
             sm = sm.squeeze(0)
             #C, T, F = decompressed_cIRM.shape
             C, T, F = cIRM_est.shape
             sout_c = torch.zeros(T, F, dtype=torch.cfloat)
-            #sout_c.real = decompressed_cIRM[0,:,:]*sm[0,:,:] - decompressed_cIRM[1,:,:]*sm[1,:,:]
-            #sout_c.imag = decompressed_cIRM[0,:,:]*sm[1,:,:] + decompressed_cIRM[1,:,:]*sm[0,:,:]
             sout_c.real = cIRM_est[0,:,:]*sm[0,:,:] - cIRM_est[1,:,:]*sm[1,:,:]
             sout_c.imag = cIRM_est[0,:,:]*sm[1,:,:] + cIRM_est[1,:,:]*sm[0,:,:]
             sout_c = sout_c.T.detach().cpu().numpy()
@@ -253,11 +224,12 @@ def test(device, net_type, model_path, dataset):
         metrics[i,1] = PESQ
         metrics[i,2] = STOI
         i += 1
-        print('[Sample {} Complete]'.format(i))
-        sys.stdout.flush()
+        if i < len(dataset)-1:
+            print('[Sample {}% Complete]'.format(100*i/len(dataset)), end='\r')
+        else:
+            print('[Sample {}% Complete]'.format(100*i/len(dataset)), end='\n')
     np.save(net_type + '_metrics.npy', metrics)
     print("Finished testing of net '{}', metrics saved in {}_metrics.npy".format(net_type, net_type))
-    sys.stdout.flush()
 
 def train(device, net_type, save_path, dataset):
     net = create_net_of_type(net_type)
@@ -271,7 +243,7 @@ def train(device, net_type, save_path, dataset):
                                         num_workers=1)
     optimizer = torch.optim.Adam(net.parameters(),
                                 lr=training_config['learning_rate'])
-    #criterion = ComplexMSELoss(device)
+
     loss_per_epoch = np.zeros((int(training_config['epochs']), 2))
     total_batches = len(dataset)/training_config['batch_size']
     for epoch in range(training_config['epochs']):
@@ -287,14 +259,10 @@ def train(device, net_type, save_path, dataset):
             optimizer.zero_grad()
             if net_type == 'phasen_1strm' or net_type == 'phasen_baseline':
                 cIRM = dsp.compute_cIRM_from(st, sm)
-                #compressed_cIRM = dsp.compress_cIRM(cIRM).to(device)
                 cIRM_est = net(sm)
-                #loss = criterion(compressed_cIRM, cIRM_est)
-                #loss = complex_mse_loss(compressed_cIRM, cIRM_est)
                 loss = complex_mse_loss(cIRM.to(device), cIRM_est)
             else:
                 s_out, M, Phi = net(sm)
-                #loss = criterion(st, s_out)
                 loss = complex_mse_loss(st, s_out)
             loss.backward()
             loss_per_pass[batch] = loss.item()
@@ -310,16 +278,79 @@ def train(device, net_type, save_path, dataset):
         print('[epoch {}] loss: {} +/- {}'.format(epoch+1, loss_per_epoch[epoch,0], loss_per_epoch[epoch, 1]))
 
     torch.save(net.state_dict(), save_path)
+    torch.save(optimizer.state_dict(), net_type + '_optim.pt')
     np.save(net_type + '_training_loss.npy', loss_per_epoch)
-    print("Finished training network '{}'. Model saved in '{}' and loss saved in '{}_training_loss.npy'".format(net_type, save_path, net_type))
+    print("Finished training network '{}'. Model saved in '{}', loss saved in '{}_training_loss_1.npy' and optimizer saved in '{}'_optim.pt".format(net_type, save_path, net_type, net_type))
+
+def continue_training(device, net_type, dataset, iteration):
+    net_path = net_type + '.pt'
+    optim_path = net_type + '_optim.pt'
+    if not os.path.isfile(net_path):
+        print("ERROR: No previous model found in current directory")
+        sys.exit(5)
+    elif not os.path.isfile(optim_path):
+        print("ERROR: No preovious optimizer settings found in the current directory")
+        sys.exit(6)
+
+    net = create_net_of_type(net_type)
+    net.load_state_dict(torch.load(net_path, map_location=device))
+    net = net.to(device)
+    optimizer = torch.optim.Adam(net.parameters(),
+                                lr=training_config['learning_rate'])
+    optimizer.load_state_dict(torch.load(optim_path, map_location=device))
+
+    dataset = create_dataset_for(dataset, 'train')
+    loader = torch.utils.data.DataLoader(dataset,
+                                        batch_size=training_config['batch_size'],
+                                        shuffle=True,
+                                        num_workers=1)
+    loss_per_epoch = np.zeros((int(training_config['epochs']), 2))
+    total_batches = len(dataset)/training_config['batch_size']
+    for epoch in range(training_config['epochs']):
+        batch = 0
+        loss_per_pass = np.zeros(len(dataset))
+        for clean, noisy, st, sm in loader:
+            # Put the spectrograms of the mixed signal and ground truth on the
+            # training device
+            sm = sm.float().to(device)
+            st = st.float().to(device)
+
+            # Do an optimization step
+            optimizer.zero_grad()
+            if net_type == 'phasen_1strm' or net_type == 'phasen_baseline':
+                cIRM = dsp.compute_cIRM_from(st, sm)
+                cIRM_est = net(sm)
+                loss = complex_mse_loss(cIRM.to(device), cIRM_est)
+            else:
+                s_out, M, Phi = net(sm)
+                loss = complex_mse_loss(st, s_out)
+            loss.backward()
+            loss_per_pass[batch] = loss.item()
+            optimizer.step()
+            batch += 1
+            if batch < total_batches-1:
+                print('\t[epoch {}] mini-batch progress: {}%'.format(epoch+1, 100.0*batch/total_batches), end='\r')
+            else:
+                print('\t[epoch {}] mini-batch progress: {}%'.format(epoch+1, 100.0*batch/total_batches), end='\n')
+
+        loss_per_epoch[epoch, 0] = loss_per_pass.mean()
+        loss_per_epoch[epoch, 1] = loss_per_pass.std(ddof=1)
+        print('[epoch {}] loss: {} +/- {}'.format(epoch+1, loss_per_epoch[epoch,0], loss_per_epoch[epoch, 1]))
+
+    torch.save(net.state_dict(), save_path)
+    torch.save(optimizer.state_dict(), net_type + '_optim.pt')
+    np.save(net_type + '_training_loss_'+str(iteration)+'.npy', loss_per_epoch)
+    print("Finished training network '{}' on iteration {}. Model saved in '{}', loss saved in '{}_training_loss_{}.npy' \
+     and optimizer saved in '{}'_optim.pt".format(net_type, iteration, save_path, net_type, iteration, net_type))
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
     operation = args['operation']
     net_type = args['net']
     dataset = args['dataset']
-    if not operation == 'train' and not operation == 'test' and not operation == 'preprocess_test' and not operation == 'test_preprocessed_data':
-        print('Invalid choice for the type of operation. Choose "train", "test", "preprocess_test" or "test_preprocessed_data"')
+    iteration = args['iteration']
+    if operation not in operations:
+        print('Invalid choice for the type of operation. Choose one of: ' + ','.join(operations))
         sys.exit(1)
     elif net_type not in networks:
         print('Invalid type of network to evaluate. Available choices: ' + ','.join(networks))
@@ -363,4 +394,12 @@ if __name__ == "__main__":
             else:
                 print('The model "{}" could not be found. Train it first'.format(model_path))
         elif operation == 'test_preprocessed_data':
+            print('Operation "{}" started on device "{}".'.format(operation, device))
             test_preprocessed_data(net_type)
+        elif operation == "continue_training":
+            if iteration:
+                print('Operation "{}" started on device "{}".'.format(operation, device))
+                continue_training(device, net_type, dataset, iteration)
+            else:
+                print("ERROR: Iteration number needed when continuing training")
+                sys.exit(7)
