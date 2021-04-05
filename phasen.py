@@ -67,7 +67,7 @@ class AltFTB(nn.Module):
     2. The freq_fc layer includes a bias term
     '''
 
-    def __init__(self, Ca=96, Cr=5, T=301, F=257, N=5):
+    def __init__(self, Ca=96, Cr=5, T=301, F=257, N=5, device='cpu'):
         super(AltFTB, self).__init__()
 
         # Sub attention module
@@ -76,8 +76,8 @@ class AltFTB(nn.Module):
                 nn.BatchNorm2d(Cr),
                 nn.ReLU()
                 )
-        self.h = torch.rand(2, N, F)
-        self.c = torch.rand(2, N, F)
+        self.h = torch.rand(2, N, F).to(device)
+        self.c = torch.rand(2, N, F).to(device)
         self.att_lstm = nn.LSTM(F*Cr, F, num_layers=1, batch_first=True, bidirectional=True)
         self.att_linear = nn.Sequential(
                         nn.Linear(2*F, F),
@@ -126,11 +126,11 @@ class AltTSB(nn.Module):
     Alternative TSB using AltFTB
     '''
 
-    def __init__(self, Ca=96, Cp=48, Cr=5, T=301, F=257, N=5):
+    def __init__(self, Ca=96, Cp=48, Cr=5, T=301, F=257, N=5, device='cpu'):
         super(AltTSB, self).__init__()
 
         # Stream A blocks
-        self.ftb_1 = AltFTB(Ca, Cr, T, F, N)
+        self.ftb_1 = AltFTB(Ca, Cr, T, F, N, device)
         self.conv_a_1 = nn.Sequential(
                 nn.Conv2d(Ca, Ca, kernel_size=5, stride=1, dilation=1, padding=2),
                 nn.BatchNorm2d(Ca),
@@ -146,7 +146,7 @@ class AltTSB(nn.Module):
                 nn.BatchNorm2d(Ca),
                 nn.ReLU())
 
-        self.ftb_2 = AltFTB(Ca, Cr, T, F, N)
+        self.ftb_2 = AltFTB(Ca, Cr, T, F, N, device)
 
         # Stream P blocks
         self.conv_p_1 = nn.Sequential(
@@ -919,7 +919,7 @@ class AltPHASEN(nn.Module):
     Alternative to PHASEN with different FTB
     '''
 
-    def __init__(self, Ca=96, Cp=48, Cr_tsb=5, Cr_out=8, bi_lstm_n=600, T=301, F=257, N=5):
+    def __init__(self, Ca=96, Cp=48, Cr_tsb=5, Cr_out=8, bi_lstm_n=600, T=301, F=257, N=5, device='cpu'):
         super(AltPHASEN, self).__init__()
 
         # Convolutional layers to produce stream A
@@ -933,9 +933,9 @@ class AltPHASEN(nn.Module):
                 nn.Conv2d(Cp, Cp, kernel_size=(25,1), stride=1, dilation=1, padding=(12,0)))
 
         # Three TSB blocks
-        self.tsb_1 = AltTSB(Ca, Cp, Cr_tsb, T, F, N)
-        self.tsb_2 = AltTSB(Ca, Cp, Cr_tsb, T, F, N)
-        self.tsb_3 = AltTSB(Ca, Cp, Cr_tsb, T, F, N)
+        self.tsb_1 = AltTSB(Ca, Cp, Cr_tsb, T, F, N, device)
+        self.tsb_2 = AltTSB(Ca, Cp, Cr_tsb, T, F, N, device)
+        self.tsb_3 = AltTSB(Ca, Cp, Cr_tsb, T, F, N, device)
 
         # Amplitude mask prediction
         self.amp_conv = nn.Conv2d(Ca, Cr_out, kernel_size=1, stride=1, dilation=1, padding=0)
