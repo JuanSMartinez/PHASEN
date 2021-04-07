@@ -65,7 +65,7 @@ def find_device():
     else:
         return torch.device('cpu')
 
-def create_net_of_type(net_type, device):
+def create_net_of_type(net_type, device, batch_size):
     if net_type == 'phasen':
         return phasen.PHASEN()
     elif net_type == 'phasen_1strm':
@@ -79,7 +79,7 @@ def create_net_of_type(net_type, device):
     elif net_type == 'phasen_no_p2a':
         return phasen.PHASEN_without_P2A()
     elif net_type == 'altphasen':
-        return phasen.AltPHASEN(N=training_config['batch_size'], device=device)
+        return phasen.AltPHASEN(N=batch_size, device=device)
     else:
         return None
 
@@ -93,7 +93,7 @@ def create_dataset_for(dataset_name, operation):
     return dataset
 
 def pre_process_test(device, net_type, model_path, dataset):
-    net = create_net_of_type(net_type, device)
+    net = create_net_of_type(net_type, device, 1)
     net.load_state_dict(torch.load(model_path, map_location=device))
     net = net.to(device)
     net.eval()
@@ -181,7 +181,7 @@ def test(device, net_type, model_path, dataset):
     from pystoi import stoi
     from pesq import pesq
     from mir_eval.separation import bss_eval_sources
-    net = create_net_of_type(net_type, device)
+    net = create_net_of_type(net_type, device, 1)
     net.load_state_dict(torch.load(model_path, map_location=device))
     net = net.to(device)
     net.eval()
@@ -234,7 +234,7 @@ def test(device, net_type, model_path, dataset):
     print("Finished testing of net '{}', metrics saved in {}_metrics.npy".format(net_type, net_type))
 
 def train(device, net_type, save_path, dataset):
-    net = create_net_of_type(net_type, device)
+    net = create_net_of_type(net_type, device, training_config['batch_size'])
     net = net.to(device)
     pytorch_total_params = sum(p.numel() for p in net.parameters())
     print("Total params: {}".format(pytorch_total_params))
@@ -294,7 +294,7 @@ def continue_training(device, net_type, dataset, iteration):
         print("ERROR: No preovious optimizer settings found in the current directory")
         sys.exit(6)
 
-    net = create_net_of_type(net_type, device)
+    net = create_net_of_type(net_type, device, training_config['batch_size'])
     net.load_state_dict(torch.load(net_path, map_location=device))
     net = net.to(device)
     optimizer = torch.optim.Adam(net.parameters(),
